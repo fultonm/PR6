@@ -1,2 +1,3 @@
-# tcss-372-project-6
-TCSS Project 6
+# TCSS372 - LC3 Simulator
+
+Private repository for TCSS 372 - Computer Architecture problems.

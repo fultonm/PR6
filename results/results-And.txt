@@ -1,0 +1,11 @@
+// AND instruction for 0x5440 AND R2, R1, R0
+
+R0: 0, 
+R1: 1, 
+R2: 0, 
+R3: 0, 
+R4: 0, 
+R5: 0, 
+R6: 0, 
+R7: 0, 
+IR: 5440, PC: 1 

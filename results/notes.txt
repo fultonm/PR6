@@ -1,0 +1,19 @@
+Need to implement:
+  add
+  and
+  not
+  trap
+  ld
+  st
+  jmp
+  br
+
+create register file
+  two registers pre initialized for testing
+    R1: 0x0005 this is SR1
+    R2: 0x000F this is SR2
+    R3: 0x0000 this is the DR
+  unsigned int array of 32 to represent limited memory
+    memory addresses run from 0x0000 to 0x001F
+
+one hex code value for each instruction

@@ -1,8 +1,4 @@
-/* 
- * LC-3 Emulator
- * 
- * Authors: Logan Stafford
- * 			Michael Fulton
+/* LC-3 Emulator
  * 
  * Date: May 2018
  *
@@ -14,7 +10,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include "slc3.h"
-#include "debug_monitor.h"
+#include "display_monitor.h"
 
 /* Function Definitions */
 void controller(CPU_p cpu);
@@ -24,7 +20,7 @@ void trap(CPU_p cpu);
 void set_condition_code(int input_number, CPU_p cpu);
 void print_binary_form(unsigned value);
 void handle_user_input(CPU_p cpu);
-void display_debug_monitor(CPU_p cpu);
+void display_display_monitor(CPU_p cpu);
 void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer);
 int binary_IR_contents_to_int16(int *binary_IR_helper_array, int *binary_IR_contents, int start, int length);
 int get_destination_register(int *binary_IR_contents, int *binary_IR_helper_array);
@@ -61,18 +57,18 @@ int main(int argc, char *argv[])
 	cpu_init(cpu);
 
 	/* Initialize and run the LC-3 from the debug monitor */
-	debug_monitor_init(cpu);
+	display_monitor_init(cpu);
 /*
-	char input_ch = debug_monitor_get_input();
-	char input_ch2 = debug_monitor_get_input();
+	char input_ch = display_monitor_get_input();
+	char input_ch2 = display_monitor_get_input();
 	char input_str[3];
 	input_str[0] = input_ch;
 	input_str[1] = input_ch2;
 	input_str[2] = '\0';
-	debug_monitor_print_output(input_str[0]);
-	debug_monitor_print_output(input_str[1]);*/
+	display_monitor_print_output(input_str[0]);
+	display_monitor_print_output(input_str[1]);*/
 
-	int monitor_return = debug_monitor_loop(cpu);
+	int monitor_return = display_monitor_loop(cpu);
 	
 
 	/* If the user has selected MONITOR_STEP, then lets continue executing the LC-3 */
@@ -96,11 +92,11 @@ int main(int argc, char *argv[])
 			}
 			break;
 		}
-		monitor_return = debug_monitor_loop(cpu);
+		monitor_return = display_monitor_loop(cpu);
 	}
 
 	/* Memory cleanup. */
-	debug_monitor_destroy();
+	display_monitor_destroy();
 	free(cpu);
 
 	return 0;
@@ -519,7 +515,7 @@ void trap(CPU_p cpu)
 				if (i == '/0') {
 					break;
 				} else { 
-					debug_monitor_print_output(i);
+					display_monitor_print_output(i);
 				}
 			}
 
@@ -738,7 +734,7 @@ FILE *open_file()
 	{
 		/* 
 		 * Error checking is hard to do with this file structure... How can we get an
-		 * error message back to the debug_monitor? We would want an error message to
+		 * error message back to the display_monitor? We would want an error message to
 		 * appear right under the user selection options.
 		 */
 	}

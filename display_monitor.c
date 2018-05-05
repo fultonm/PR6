@@ -1,7 +1,4 @@
-/* 
- * LC-3 Emulator
- * 
- * Authors: Michael Fulton
+/* LC-3 Emulator
  * 
  * Date: May 2018
  *
@@ -15,7 +12,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include "slc3.h"
-#include "debug_monitor.h"
+#include "display_monitor.h"
 
 #define REG 0
 #define MEM 1
@@ -46,13 +43,14 @@ typedef struct MenuString
     char description[31];
 } MenuString;
 
-int init_debug_monitor(CPU_p);
-int free_debug_monitor();
-int destroy_debug_monitor();
+int init_display_monitor(CPU_p);
+int free_display_monitor();
+int destroy_display_monitor();
 void print_message(const char *, char *);
 void clear_message();
-int update_debug_monitor(CPU_p);
+int update_display_monitor(CPU_p);
 void print_title(WINDOW *, int, char *, chtype);
+void draw_io_window(WINDOW *, char *);
 void print_window_titles();
 
 /** Ensure these are at least as big (or equal to) the actual vaues in the CPU. These have
@@ -62,23 +60,22 @@ MenuString reg_strings[NUM_OF_REGISTERS + 1];
 MenuString mem_strings[NUM_OF_MEM_BANKS + 1];
 MenuString cpu_strings[7 + 1];
 
-ITEM **menu_list_items[3];
-MENU *menus[3];
-int saved_menu_index[3];
 WINDOW *menu_windows[3];
 WINDOW *input_window, *output_window;
-int c, i;
+MENU *menus[3];
+ITEM **menu_list_items[3];
 int item_counts[3];
+int saved_menu_index[3];
 int active_window = MEM;
 
+int c, i;
 char output_console[36];
 char output_console_ptr = 0;
-
 char display_mem_input[6];
 
 /** Initializes the debug monitor with variables needed throughout the execution of the
  * LC-3 simulator. */
-int debug_monitor_init(CPU_p cpu)
+int display_monitor_init(CPU_p cpu)
 {
     /* Initialize ncurses */
     initscr();
@@ -107,24 +104,19 @@ int debug_monitor_init(CPU_p cpu)
     menu_windows[MEM] = newwin(MEM_PANEL_HEIGHT, MEM_PANEL_WIDTH, HEIGHT_PADDING, CPU_PANEL_WIDTH + 8);
     menu_windows[CPU] = newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + 2, 4);
 
-    /* Create input and output windows */
     input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4, MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
-    box(input_window, 0, 0);
+    draw_io_window(input_window, "Input");
     output_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4, MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
-    box(output_window, 0, 0);
-    print_title(output_window, 0, "Output", COLOR_PAIR(1));
-    wrefresh(output_window);
-    print_title(input_window, 0, "Input", COLOR_PAIR(1));
-    wrefresh(input_window);
+    draw_io_window(output_window, "Output");
 
-    debug_monitor_update(cpu);
+    display_monitor_update(cpu);
 
     return 0;
 }
 
 /** Frees the memory associated with windows within the LC-3 debug monitor and prepares
  * the debug monitor for a refresh of displayed contents. */
-int debug_monitor_free()
+int display_monitor_free()
 {
     int j;
     for (i = 0; i < 3; i++)
@@ -143,9 +135,9 @@ int debug_monitor_free()
 
 /** Frees all memory associated with Ncurses and prepares the LC-3 simulator for a complete
  * shutdown. */
-int debug_monitor_destroy()
+int display_monitor_destroy()
 {
-    debug_monitor_free();
+    display_monitor_free();
     for (i = 0; i < 3; i++)
     {
         delwin(menu_windows[i]);
@@ -166,14 +158,14 @@ void print_message(const char *message, char *arg)
 }
 
 /** Clears the message displayed just below the list of available user operations */
-void clear_message()
+void clear_line(int line)
 {
-    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, 0);
+    move(line, 0);
     clrtoeol();
 }
 
 /** Prints output resulting from the LC-3 */
-void debug_monitor_print_output(char ch)
+void display_monitor_print_output(char ch)
 {
     if (ch != '\n')
     {
@@ -183,16 +175,21 @@ void debug_monitor_print_output(char ch)
         attron(COLOR_PAIR(2));
         mvprintw(MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT * 2 + HEIGHT_PADDING, 6, "%s", output_console);
         attroff(COLOR_PAIR(2));
-        //wrefresh(output_window);
-    } else {
+    }
+    else
+    {
         output_console_ptr = 0;
         output_console[output_console_ptr] = '\0';
+        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
+        draw_io_window(output_window, "Output");
     }
 }
 
-char debug_monitor_get_input()
+char display_monitor_get_input()
 {
     int prev_active_window = active_window;
+
+    /* Draw all other windows as inactive, draw input as active */
     active_window = -1;
     print_window_titles();
     print_title(input_window, 0, "Input", COLOR_PAIR(2));
@@ -203,12 +200,9 @@ char debug_monitor_get_input()
     echo();
     char input_ch = getch();
     noecho();
-    move(MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING, 0);
-    clrtoeol();
+    clear_line(MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING);
 
-    box(input_window, 0, 0);
-    print_title(input_window, 0, "Input", COLOR_PAIR(1));
-    wrefresh(input_window);
+    draw_io_window(input_window, "Input");
     active_window = prev_active_window;
     print_window_titles();
     return input_ch;
@@ -235,14 +229,33 @@ void print_window_titles()
     /** mvwaddch(menu_windows[CPU], 2, CPU_PANEL_WIDTH - 1, ACS_RTEE);
         box(cpu_menu_win, 0, 0); */
 
-    /**
-     * Refresh the menus */
+    /* Refresh the menus */
     for (i = 0; i < 3; i++)
     {
         wrefresh(menu_windows[i]);
     }
 
     refresh();
+}
+
+/** Prints the title of a window */
+void print_title(WINDOW *win, int y, char *string, chtype color)
+{
+    if (win == NULL)
+        win = stdscr;
+    wattron(win, color);
+    mvwprintw(win, y, 4, "%s", string);
+    wattroff(win, color);
+    refresh();
+}
+
+/** Draws the input and output windows with title. This method is called when the display
+ *  monitor is first created, and every time input or output is erased from the screen */
+void draw_io_window(WINDOW *window, char *title)
+{
+    box(window, 0, 0);
+    print_title(window, 0, title, COLOR_PAIR(1));
+    wrefresh(window);
 }
 
 void save_menu_indicies()
@@ -264,11 +277,11 @@ void restore_menu_indicies()
 }
 
 /** Updates the Ncurses window each time this function is called. The arrays containing
- * menu data are all rebuilt, the menus are reinstantiated, positioned, and posted to the
- * windows. */
-void debug_monitor_update(CPU_p cpu)
+ *  menu data are all rebuilt, the menus are reinstantiated, positioned, and posted to the
+ *  windows. */
+void display_monitor_update(CPU_p cpu)
 {
-    debug_monitor_free();
+    display_monitor_free();
 
     for (i = 0; i < item_counts[REG]; ++i)
     {
@@ -278,7 +291,7 @@ void debug_monitor_update(CPU_p cpu)
     }
     menu_list_items[REG][i] = new_item((char *)NULL, (char *)NULL);
 
-    /**　Create the items for the memory */
+    /* Create the items for the memory */
     for (i = 0; i < item_counts[MEM]; ++i)
     {
         sprintf(mem_strings[i].label, "x%04X:", 12288 + i); /* So to start at x3000 */
@@ -287,7 +300,7 @@ void debug_monitor_update(CPU_p cpu)
     }
     menu_list_items[MEM][i] = new_item((char *)NULL, (char *)NULL);
 
-    /**　Create items for the CPU */
+    /* Create items for the CPU */
     sprintf(cpu_strings[0].label, "PC:");
     sprintf(cpu_strings[0].description, "x%04X", cpu->program_counter);
     sprintf(cpu_strings[1].label, "IR:");
@@ -309,23 +322,22 @@ void debug_monitor_update(CPU_p cpu)
     }
     menu_list_items[CPU][7] = new_item((char *)NULL, (char *)NULL);
 
-    /**　Create menu instances from the lists */
+    /* Create menu instances from the lists */
     for (i = 0; i < 3; i++)
     {
         menus[i] = new_menu((ITEM **)menu_list_items[i]);
     }
 
-    /**　Set the initially active window */
+    /* Set the initially active window */
     keypad(menu_windows[active_window], TRUE);
 
-    /** Set menus to their windows */
+    /* Set menus to their windows */
     for (i = 0; i < 3; i++)
     {
         set_menu_win(menus[i], menu_windows[i]);
     }
 
-    /**
-     * The the menu sub ??? and its format menu_format is number of rows, columns for the
+    /* The the menu sub ??? and its format menu_format is number of rows, columns for the
      * list's visible contents and scrolls the rest of the list. */
     set_menu_sub(menus[REG], derwin(menu_windows[REG], REG_PANEL_HEIGHT - 4, REG_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(menus[REG], REG_PANEL_HEIGHT - 4, 1);
@@ -336,7 +348,7 @@ void debug_monitor_update(CPU_p cpu)
     set_menu_sub(menus[CPU], derwin(menu_windows[CPU], CPU_PANEL_HEIGHT - 4, CPU_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(menus[CPU], MEM_PANEL_HEIGHT - 4, 2);
 
-    /** Set menu mark to the string " * " */
+    /* Set menu mark to the string " * " */
     for (i = 0; i < 3; i++)
     {
         set_menu_mark(menus[i], " * ");
@@ -344,16 +356,14 @@ void debug_monitor_update(CPU_p cpu)
 
     print_window_titles();
 
-    /**
-     * Post the menus */
+    /* Post the menus */
     for (i = 0; i < 3; i++)
     {
         post_menu(menus[i]);
         wrefresh(menu_windows[i]);
     }
 
-    /**
-     * Print labels on the window */
+    /* Print labels on the window */
     attron(COLOR_PAIR(2));
     mvprintw(0, 4, "Welcome to the LC-3 Simulator Simulator!");
     mvprintw(MEM_PANEL_HEIGHT + 2, 4, "Select 1) Load, 3) Step, 5) Display Mem, 9) Exit");
@@ -365,47 +375,46 @@ void debug_monitor_update(CPU_p cpu)
 }
 
 /** The main logic loop for the debug monitor. Listens for user keystrokes and performs
- * debugging operations */
-int debug_monitor_loop(CPU_p cpu)
+ *  debugging operations */
+int display_monitor_loop(CPU_p cpu)
 {
     save_menu_indicies();
-    debug_monitor_update(cpu);
+    display_monitor_update(cpu);
     restore_menu_indicies();
     /** This variable is used to return information about the user's selection back to the
-     * LC-3 */
+     *  LC-3 */
     char monitor_return = MONITOR_NO_OP;
 
-    /** If the user selected 9) to quit this while loop will exit */
+    /* If the user selected 9) to quit this while loop will exit */
     while ((c = wgetch(menu_windows[active_window])) != 57)
     {
-        /** Clear previous messages */
-        clear_message();
+        /* Clear previous messages */
+        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
 
         switch (c)
         {
         case 9:
-            /**
-             * User pressed Tab to change active window */
+            /*　User pressed Tab to change active window */
             active_window = ++active_window % 3;
             keypad(menu_windows[active_window], TRUE);
             print_window_titles();
             break;
         case 49:
-            /** User selected 1) to load a file */
+            /* User selected 1) to load a file */
             print_message(MSG_LOAD, NULL);
             /** Move the cursor, turn on echo mode so the user can see their input
-             * then turn it back on after capturing file name input */
+             *  then turn it back on after capturing file name input */
             move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
             echo();
             getstr(load_file_input);
             noecho();
 
-            clear_message();
+            clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
             print_message(MSG_LOADED, load_file_input);
             monitor_return = MONITOR_LOAD;
             break;
         case 51:
-            /** User selected 3) to step through code */
+            /* User selected 3) to step through code */
             if (!file_loaded)
             {
                 print_message(MSG_NO_FILE, NULL);
@@ -418,10 +427,10 @@ int debug_monitor_loop(CPU_p cpu)
             }
             break;
         case 53:
-            /** User selected 5) to display a specific memory address */
+            /* User selected 5) to display a specific memory address */
             print_message(MSG_DISPLAY_MEM, NULL);
             /** Move the cursor, turn on echo mode so the user can see their input
-             * then turn it back on after capturing file name input */
+             *  then turn it back on after capturing file name input */
             move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_DISPLAY_MEM) + 5);
             echo();
             getstr(display_mem_input);
@@ -449,7 +458,7 @@ int debug_monitor_loop(CPU_p cpu)
             break;
         }
 
-        /** Shows the last inputted character as Ncurses recognizes it */
+        /* Shows the last inputted character as Ncurses recognizes it */
         attron(COLOR_PAIR(1));
         mvprintw(LINES - 3, 0, "Debug: %d", c, c);
         attroff(COLOR_PAIR(1));
@@ -460,15 +469,4 @@ int debug_monitor_loop(CPU_p cpu)
     }
 
     return MONITOR_QUIT;
-}
-
-/** Prints the title of a window */
-void print_title(WINDOW *win, int y, char *string, chtype color)
-{
-    if (win == NULL)
-        win = stdscr;
-    wattron(win, color);
-    mvwprintw(win, y, 4, "%s", string);
-    wattroff(win, color);
-    refresh();
 }

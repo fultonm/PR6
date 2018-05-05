@@ -1,8 +1,4 @@
-/* 
- * LC-3 Emulator
- * 
- * Author: Logan Stafford 
- * Author: Michael Fulton
+/* LC-3 Emulator
  * 
  * Date: May 2018
  *

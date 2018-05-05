@@ -1,8 +1,4 @@
-/* 
- * LC-3 Emulator
- * 
- * Author: Logan Stafford 
- * Author: Michael Fulton
+/* LC-3 Emulator
  * 
  * Date: May 2018
  *
@@ -12,8 +8,8 @@
 
 #include "slc3.h"
 
-#ifndef DEBUG_MONITOR_H_
-#define DEBUG_MONITOR_H_
+#ifndef DISPLAY_MONITOR_H_
+#define DISPLAY_MONITOR_H_
 
 #define MONITOR_QUIT 0
 #define MONITOR_STEP 1
@@ -22,11 +18,11 @@
 
 char load_file_input[80];
 
-int debug_monitor_init(CPU_p);
-void debug_monitor_update(CPU_p);
-int debug_monitor_loop(CPU_p);
-int debug_monitor_destroy();
-char debug_monitor_get_input();
-void debug_monitor_print_output(char);
+int display_monitor_init(CPU_p);
+void display_monitor_update(CPU_p);
+int display_monitor_loop(CPU_p);
+int display_monitor_destroy();
+char display_monitor_get_input();
+void display_monitor_print_output(char);
 
 #endif

@@ -295,7 +295,7 @@ void display_monitor_update(CPU_p cpu)
     for (i = 0; i < item_counts[MEM]; ++i)
     {
         sprintf(mem_strings[i].label, "x%04X:", 12288 + i); /* So to start at x3000 */
-        sprintf(mem_strings[i].description, "x%04X", cpu->memory[i]);
+        sprintf(mem_strings[i].description, "x%04X", memory[i]);
         menu_list_items[MEM][i] = new_item(mem_strings[i].label, mem_strings[i].description);
     }
     menu_list_items[MEM][i] = new_item((char *)NULL, (char *)NULL);
@@ -378,6 +378,8 @@ void display_monitor_update(CPU_p cpu)
  *  debugging operations */
 int display_monitor_loop(CPU_p cpu)
 {
+    /* Set selected item in memory to be current PC */
+    set_current_item(menus[MEM], menu_list_items[MEM][cpu->pc]);
     save_menu_indicies();
     display_monitor_update(cpu);
     restore_menu_indicies();
@@ -468,5 +470,6 @@ int display_monitor_loop(CPU_p cpu)
             return monitor_return;
     }
 
-    return MONITOR_QUIT;
+    monitor_return = MONITOR_QUIT;
+    return monitor_return;
 }

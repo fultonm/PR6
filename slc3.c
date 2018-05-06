@@ -1,338 +1,481 @@
-/*
- *  slc3.c
+/* LC-3 Emulator
+ * 
+ * Date: May 2018
  *
- *  Date Due: May 2, 2018
- *  Authors:  Sam Brendel, Mike Josten
- *  Problem 5
- *  version: 4.30d
+ * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3 
+ * machine based a finite state machine (FSM) interpretation of its operations.
  */
 
-#include "slc3.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <ncurses.h>
-#include <ctype.h>
+#include "slc3.h"
+#include "display_monitor.h"
 
+FILE *open_file();
 unsigned short memory[MEMORY_SIZE];
 bool isHalted = false;
 bool isRun = false;
-int outputLineCounter = 0;
-int outputColCounter = 0;
 
-/**
- * Simulates trap table lookup.
- * @param vector the area in memory that is simulated to be looked up to
- *        execute the requested TRAP routine.
- * @param cpu the cpu object that contains data.
+/* 
+ * Main method for the LC-3 Emulator. 
+ * 
+ * The command line argument passed in is what will be populated into 
+ * the LC-3's memory at runtime. For example, if the program is run with
+ * input "0x1694", that hexadecimal value will be stored into the instruction register (IR)
+ * and can be thought of in binary as 0001 0110 1001 0100, which (based on the
+ * four highest-order bits) is an ADD instruction for the LC-3 (from its instruction set).
  */
-void trap(unsigned short vector, CPU_p *cpu, WINDOW *theWindow) {
-    switch (vector) {
-        case TRAP_VECTOR_X20: ;// GETC
-            noecho(); //turn echo off
-            char *input = (char*) malloc(sizeof(char));
-            cursorAtInput(theWindow, input);
-            cpu->reg[0] = *input;
-                //printf("\nDOING TRAP X20\n");
-            free(input);
-            echo(); //turn echo back on.
-                break;
-            case TRAP_VECTOR_X21: ;// OUT
-            /* put R0 value into char variable, then send to "cursor" function */
-            char *output = (char*) malloc(sizeof(char) * 2);
-            output[0] = cpu->reg[0];
-            output[1] = '\0'; // null-terminator
-            cursorAtOutput(theWindow, output);
-            //printf("\nDOING TRAP X21\n");
-            free(output);
-            break;
-        case TRAP_VECTOR_X22: ;//PUTS trap command
-            //printf("\nDOING TRAP X22\n");
-            char *outputString = (char*) malloc(sizeof(char) * 40);
-            short memCounter = cpu->reg[0];
-            short outCounter = 0;
-            /* store characters in string until character is null pointer,
-            * starting with character stored in memory at reg[0] and incrementing until 
-            * null pointer is reached. */
-            while (memory[memCounter] != 0) {
-                outputString[outCounter] = memory[memCounter];
-                memCounter++;
-                outCounter++;
-            }
-            outputString[outCounter] = '\0';
-            cursorAtOutput(theWindow, outputString);
-	    free(outputString);
-            break;
-        case TRAP_VECTOR_X25: // HALT
-            cursorAtPrompt(theWindow, "==========HALT==========");
-            //cpu->pc = 0; // reset to zero as per Prof Mobus.
-            isHalted = true;
-            isRun = false;
-            break;
-        default: 
-            cursorAtPrompt(theWindow, "Error: Unknown Trap vector");
-            break;
-    }
+int main(int argc, char *argv[])
+{
+	file_loaded = 0;
+
+	/* Creating and initializing a CPU struct. */
+	CPU_p cpu = (CPU_p) calloc(1, sizeof(struct CPU));
+	if (!cpu)
+		return 1;
+	cpu_init(cpu);
+
+	/* Initialize and run the LC-3 from the debug monitor */
+	display_monitor_init(cpu);
+/*
+	char input_ch = display_monitor_get_input();
+	char input_ch2 = display_monitor_get_input();
+	char input_str[3];
+	input_str[0] = input_ch;
+	input_str[1] = input_ch2;
+	input_str[2] = '\0';
+	display_monitor_print_output(input_str[0]);
+	display_monitor_print_output(input_str[1]);*/
+
+	int monitor_return = display_monitor_loop(cpu);
+	
+
+	/* If the user has selected MONITOR_STEP, then lets continue executing the LC-3 */
+	while (monitor_return != MONITOR_QUIT)
+	{
+		switch (monitor_return)
+		{
+		case MONITOR_NO_OP:
+			// printf("A no-op was passed... this shouldn't actually happen.");
+			/* Fall-through to update... */
+			break;
+
+		case MONITOR_LOAD:
+			load_file_to_memory(cpu, open_file());
+			break;
+
+		case MONITOR_STEP:
+			if (!cpu->halted)
+			{
+				controller(cpu);
+			}
+			break;
+		}
+		monitor_return = display_monitor_loop(cpu);
+	}
+
+	/* Memory cleanup. */
+	display_monitor_destroy();
+	free(cpu);
+
+	return 0;
 }
 
-/**
- * The controller component of the LC-3 simulator.
- * @param cpu the cpu object to contain data.
+/* 
+ * This method initializes a passed in CPU object (technically a pointer to one)
+ * by setting all of it's regsiter/state/memory values to zero.
  */
-int controller(CPU_p *cpu, WINDOW *theWindow) {
+void cpu_init(CPU_p cpu)
+{
+	int i;
+	for (i = 0; i < NUM_OF_REGISTERS; i++)
+	{
+		cpu->registers[i] = 0;
+	}
+	for (i = 0; i < NUM_OF_MEM_BANKS; i++)
+	{
+		cpu->memory[i] = 0;
+	}
+	cpu->ir = 0;
+	cpu->pc = 0;
+	cpu->mdr = 0;
+	cpu->mar = 0;
+	cpu->cc = 0;
+	cpu->state = 0;
+	cpu->alu_a = 0;
+	cpu->alu_b = 0;
+	cpu->alu_result = 0;
+	cpu->trap_vector = 0;
+	cpu->opcode = 0;
+	cpu->dr = 0;
+	cpu->sr1 = 0;
+	cpu->sr2 = 0;
+	cpu->branch_enabled = 0;
+	cpu->immediate_mode = 0;
+	cpu->jsr_immediate_mode = 0;
+	cpu->pc_offset9 = 0;
+	cpu->halted = 0;
+}
 
-    // check to make sure both pointers are not NULL
-    // do any initializations here
+/* 
+ * The controller method of the LC-3. This contains much of the complete instruction 
+ * cycle of the LC-3.
+ */
+void controller(CPU_p cpu)
+{
     unsigned int opcode, dr, sr1, sr2, bit5, bit11, state, nzp;    // fields for the IR
     short offset, immed;
-    unsigned short vector8, vector16;
+    unsigned short vector;
     bool isCycleComplete = false;
 
-    state = FETCH;
-    while (!isHalted) {
-        switch (state) {
-            case FETCH: // microstates 18, 33, 35 in the book.
-                //printf("Now in FETCH---------------\n");
-                cpu->mar = cpu->pc;           // Step 1: MAR is loaded with the contends of the PC,
-                cpu->pc++;                    //         and also increment PC. Only done in the FETCH phase.
-                cpu->mdr = memory[cpu->mar];  // Step 2: Interrogate memory, resulting in the instruction placed into the MDR.
-                cpu->ir  = cpu->mdr;          // Step 3: Load the IR with the contents of the MDR.
-                state    = DECODE;
-                break;
+	/* Ensuring that CPU pointer being passed into the controller is valid. */
+	if (!cpu)
+	{
+		exit(1);
+	}
 
-            case DECODE: // microstate 32
-                //printf("Now in DECODE---------------\n");
-                opcode = (cpu->ir & MASK_OPCODE) >> BITSHIFT_OPCODE; // Input is the four-bit opcode IR[15:12]. The output line asserted is the one corresponding to the opcode at the input.
-                //opcode = opcode  >> BITSHIFT_OPCODE;
-                state = EVAL_ADDR;
-                break;
+	/* Creating integers array to store a binary representation of
+	   the contents of the CPU's instruction register. */
+	//int *binary_IR_contents = (int *)malloc(sizeof(int) * NUM_OF_BITS);
+	//int *binary_IR_helper_array = (int *)malloc(sizeof(int) * NUM_OF_BITS);
 
-            case EVAL_ADDR:
-                //printf("Now in EVAL_ADDR---------------\n");
-                // This phase computes the address of the memory location that is needed to process the instruction.
-                // NOTE: Study each opcode to determine what all happens this phase for that opcode.
-                // Look at the LD instruction to see microstate 2 example.
-                switch (opcode) {
-                    // different opcodes require different handling
-                    // compute effective address, e.g. add sext(immed7) to
-                    // register
-                    case OP_LD:
-			dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
-			offset = cpu->ir & MASK_PCOFFSET9;
-			offset = SEXT(offset, BIT_PCOFFSET9);
-                        cpu->mar = cpu->pc + offset; // microstate 2.
-                        cpu->mdr = memory[cpu->mar]; // microstate 25.
-                        break;
-                    case OP_LDR:
-                        dr       = (cpu->ir & MASK_DR)  >> BITSHIFT_DR;
-                        sr1      = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
-                        offset   =  cpu->ir & MASK_PCOFFSET6;
-			offset = SEXT(offset, BIT_PCOFFSET6);
-                        cpu->mar =  cpu->reg[sr1] + offset;
-                        cpu->mdr =  memory[cpu->mar];
-                        break;
-                    case OP_ST:
-                        dr       = (cpu->ir & MASK_DR) >> BITSHIFT_DR;         // This is actually a source register, but still use dr.
-                        offset   =  cpu->ir & MASK_PCOFFSET9;
-			offset = SEXT(offset, BIT_PCOFFSET9);
-                        cpu->mar =  cpu->pc + offset; // microstate 2.
-                        break;
-                    case OP_STR:
-                        dr       = (cpu->ir  & MASK_DR)  >> BITSHIFT_DR;  //actually source register
-                        sr1      = (cpu->ir  & MASK_SR1) >> BITSHIFT_SR1;  //base register
-                        offset   =  cpu->ir  & MASK_PCOFFSET6;
-			offset = SEXT(offset, BIT_PCOFFSET6);
-                        cpu->mar =  cpu->reg[sr1] + offset;
-                        break;
-                    case OP_LEA:
-                        dr       = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
-                        offset   =  cpu->ir & MASK_PCOFFSET9;
-			offset = SEXT(offset, BIT_PCOFFSET9);
-                        break;
-                    case OP_JSR:
-                        offset = cpu->ir & MASK_PCOFFSET11;
-			offset = SEXT(offset, BIT_PCOFFSET11);
+	/* Beginning instruction cycle. */
+	state = FETCH;
+	while (!isHalted)
+	{
+		switch (state)
+		{
+		/* The first state of the instruction cycle, the "fetch" state. */
+		case FETCH:
+			/* Corresponding to FSM microstates 18, 33, and 35. */
+            cpu->mar = cpu->pc;           // Step 1: MAR is loaded with the contends of the PC,
+            cpu->pc++;                    //         and also increment PC. Only done in the FETCH phase.
+            cpu->mdr = memory[cpu->mar];  // Step 2: Interrogate memory, resulting in the instruction placed into the MDR.
+            cpu->ir  = cpu->mdr;          // Step 3: Load the IR with the contents of the MDR.
+            state    = DECODE;            // Moving to next state.
+            break;
+
+		/* The second state of the instruction cycle, the "decode" state. */
+		case DECODE:
+			/* Corresponding to FSM state 32. Most of these decoding functions are
+				   delegated to helper functions. */
+            opcode = (cpu->ir & MASK_OPCODE) >> BITSHIFT_OPCODE; // Input is the four-bit opcode IR[15:12]. The output line asserted is the one corresponding to the opcode at the input.
+            state = EVAL_ADDR; // Moving to next state.
+            break;
+
+		/* The third state of the instruction cycle, the "evaluate address" state. */
+		case EVAL_ADDR:
+			switch (opcode)
+			{
+                case LD:
+                    dr       = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
+                    offset   = cpu->ir & MASK_PCOFFSET9;
+                    offset   = SEXT(offset, BIT_PCOFFSET9);
+                    cpu->mar = cpu->pc + offset; // microstate 2.
+                    cpu->mdr = memory[cpu->mar]; // microstate 25.
                     break;
-                }
-                state = FETCH_OP;
+                case LDR:
+                    dr       = (cpu->ir & MASK_DR)  >> BITSHIFT_DR;
+                    sr1      = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
+                    offset   =  cpu->ir & MASK_PCOFFSET6;
+                    offset   = SEXT(offset, BIT_PCOFFSET6);
+                    cpu->mar =  cpu->registers[sr1] + offset;
+                    cpu->mdr =  memory[cpu->mar];
+                    break;
+                case ST:
+                    dr       = (cpu->ir & MASK_DR) >> BITSHIFT_DR;         // This is actually a source register, but still use dr.
+                    offset   =  cpu->ir & MASK_PCOFFSET9;
+                    offset   = SEXT(offset, BIT_PCOFFSET9);
+                    cpu->mar =  cpu->pc + offset; // microstate 2.
+                    break;
+                case STR:
+                    dr       = (cpu->ir  & MASK_DR)  >> BITSHIFT_DR;  //actually source register
+                    sr1      = (cpu->ir  & MASK_SR1) >> BITSHIFT_SR1;  //base register
+                    offset   =  cpu->ir  & MASK_PCOFFSET6;
+                    offset   = SEXT(offset, BIT_PCOFFSET6);
+                    cpu->mar =  cpu->registers[sr1] + offset;
+                    break;
+                case LEA:
+                    dr       = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
+                    offset   =  cpu->ir & MASK_PCOFFSET9;
+                    offset   = SEXT(offset, BIT_PCOFFSET9);
+                    break;
+                case JSR:
+                    // TODO use a switch block for the bit to distinguish JSR and JSRR.
+                    offset = cpu->ir & MASK_PCOFFSET11;
+                    offset = SEXT(offset, BIT_PCOFFSET11);
                 break;
-                
-            case FETCH_OP:
-                //printf("Now in FETCH_OP---------------\n");
-                switch (opcode) {
-                    // get operands out of registers into A, B of ALU
-                    // or get memory for load instr.
-                    case OP_ADD:
-                    case OP_AND:
-                        dr   = (cpu->ir & MASK_DR)   >> BITSHIFT_DR;
-                        sr1  = (cpu->ir & MASK_SR1)  >> BITSHIFT_SR1;
-                        bit5 = (cpu->ir & MASK_BIT5) >> BITSHIFT_BIT5;
-                        if (bit5 == 0) {
-                            sr2 = cpu->ir & MASK_SR2; // no shift needed.
-                        } else if (bit5 == 1) {
-                            immed = cpu->ir & MASK_IMMED5; // no shift needed.
-			    immed = SEXT(immed, BIT_IMMED);
-                        }
-                        // The book page 106 says current microprocessors can be done simultaneously during fetch, but this simulator is old skool.
-                        break;
-                    case OP_NOT:
-                        dr  = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
-                        sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
-                        break;
-                    case OP_TRAP:
-                        vector8 = cpu->ir & MASK_TRAPVECT8; // No shift needed.
-                        break;
-                    case OP_ST: // Same as LD.
-                    case OP_STR:
-                        // Book page 124.
-                        cpu->mdr = cpu->reg[dr];
-                        break;
-                    case OP_JMP:
-                        sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
-                        break;
-                    case OP_BR:
-                        nzp = (cpu->ir & MASK_NZP) >> BITSHIFT_CC;
-                        offset = cpu->ir & MASK_PCOFFSET9;
-                        break;
-                    case OP_JSR:
-                        bit11 = (cpu->ir & MASK_BIT11) >> BITSHIFT_BIT11;
-                        cpu->reg[7] = cpu->pc;
-                        if (bit11 == 0) { //JSRR
-                            sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
-                            cpu->pc = cpu->reg[sr1];
-                        } else { //JSR
-                            cpu->pc += offset;
-                        }
-                        break;
-                }
-                state = EXECUTE;
-                break;
+            }
+            state = FETCH_OP; // Moving to next state.
+            break;
 
-            case EXECUTE: // Note that ST does not have an execute microstate.
-                //printf("Now in EXECUTE---------------\n");
-                switch (opcode) {
-                    case OP_ADD:
-                        if (bit5 == 0) {
-                            cpu->mdr = cpu->reg[sr2] + cpu->reg[sr1];
-                        } else if (bit5 == 1) {
-                            cpu->mdr = cpu->reg[sr1] + immed;
-                        }
-                        cpu->cc = getCC(cpu->mdr); // TODO should this be set in this phase?
-                        break;
-                    case OP_AND:
-                        if (bit5 == 0) {
-                            cpu->mdr = cpu->reg[sr2] & cpu->reg[sr1];
-                        } else if (bit5 == 1) {
-                            cpu->mdr = cpu->reg[sr1] & immed;
-                        }
-                        cpu->cc = getCC(cpu->mdr); // TODO should this be set in this phase?
-                        break;
-                    case OP_NOT:
-                        cpu->mdr = ~cpu->reg[sr1]; // Interpret as a negative if the leading bit is a 1.
-                        cpu->cc = getCC(cpu->mdr); // TODO should this be set in this phase?
-                        break;
-                    case OP_TRAP:
-                        // Book page 222.
-                        //vector16   = ZEXT(vector8); // TODO: should we make this actually do a zero extend to 16 bits?
-                        //cpu->mar    = vector16;
-                        cpu->reg[7] = cpu->pc; // Store the PC in R7 before loading PC with the starting address of the service routine.
-                        //cpu->mdr    = memory[cpu->mar]; // read the contents of the register.
-                        //cpu->pc     = cpu->mdr; // The contents of the MDR are loaded into the PC.  Load the PC with the starting address of the service routine.
-                        trap(vector8, cpu, theWindow);
-                        break;
-                    case OP_JMP:
-                        cpu->pc = cpu->reg[sr1];
-                        break;
-                    case OP_BR: ;
-			offset = SEXT(offset, BIT_PCOFFSET9);
-                        if (branchEnabled(nzp, cpu)) {
-                            cpu->pc += (offset);
-			    
-                        }
-                        break;
-                }
-                state = STORE;
-                break;
-                
-            case STORE: // Look at ST. Microstate 16 is the store to memory
-                //printf("Now in STORE---------------\n");
-                switch (opcode) {
-                    // write back to register or store MDR into memory
-                    case OP_ADD:
-                    case OP_AND: // Same as ADD
-                    case OP_NOT: // Same as AND and AND.
-                        cpu->reg[dr] = cpu->mdr;
-                        break;
-                    case OP_LD:
-                    case OP_LDR:
-                        cpu->reg[dr] = cpu->mdr; // Load into the register.
-			cpu->cc = getCC(cpu->reg[dr]);
-                        break;
-                    case OP_ST:
-                    case OP_STR:
-                        memory[cpu->mar] = cpu->mdr;     // Store into memory.
-                        break;
-                    case OP_LEA:
-                        cpu->reg[dr] = cpu->pc + offset;
-                        cpu->cc = getCC(cpu->reg[dr]);
-                        break;
-                }
+		/* The fourth state of the instruction cycle, the "fetch operands" state. */
+		case FETCH_OP:
+            switch (opcode) {
+                // get operands out of registers into A, B of ALU
+                // or get memory for load instr.
+                case ADD:
+                case AND:
+                    dr   = (cpu->ir & MASK_DR)   >> BITSHIFT_DR;
+                    sr1  = (cpu->ir & MASK_SR1)  >> BITSHIFT_SR1;
+                    bit5 = (cpu->ir & MASK_BIT5) >> BITSHIFT_BIT5;
+                    if (bit5 == 0) {
+                        sr2 = cpu->ir & MASK_SR2; // no shift needed.
+                    } else if (bit5 == 1) {
+                        immed = cpu->ir & MASK_IMMED5; // no shift needed.
+                        immed = SEXT(immed, BIT_IMMED);
+                    }
+                    // The book page 106 says current microprocessors can be done simultaneously during fetch, but this simulator is old skool.
+                    break;
+                case NOT:
+                    dr  = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
+                    sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
+                    break;
+                case TRAP:
+                    vector = cpu->ir & MASK_TRAPVECT8; // No shift needed.
+                    break;
+                case ST: // Same as LD.
+                case STR:
+                    // Book page 124.
+                    cpu->mdr = cpu->registers[dr];
+                    break;
+                case JMP:
+                    sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
+                    break;
+                case BR:
+                    nzp = (cpu->ir & MASK_NZP) >> BITSHIFT_CC;
+                    offset = cpu->ir & MASK_PCOFFSET9;
+                    break;
+                case JSR:
+                    bit11 = (cpu->ir & MASK_BIT11) >> BITSHIFT_BIT11;
+                    cpu->registers[7] = cpu->pc;
+                    if (bit11 == 0) { //JSRR
+                        sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
+                        cpu->pc = cpu->registers[sr1];
+                    } else { //JSR
+                        cpu->pc += offset;
+                    }
+                    break;
+            }
+            state = EXECUTE; // Moving to next state.
+            break;
+
+		/* The fifth state of the instruction cycle, the "execute" state. */
+		case EXECUTE:
+            switch (opcode) {
+                case ADD:
+                    if (bit5 == 0) {
+                        cpu->mdr = cpu->registers[sr2] + cpu->registers[sr1];
+                    } else if (bit5 == 1) {
+                        cpu->mdr = cpu->registers[sr1] + immed;
+                    }
+                    cpu->cc = getCC(cpu->mdr); // TODO should this be set in this phase?
+                    break;
+                case AND:
+                    if (bit5 == 0) {
+                        cpu->mdr = cpu->registers[sr2] & cpu->registers[sr1];
+                    } else if (bit5 == 1) {
+                        cpu->mdr = cpu->registers[sr1] & immed;
+                    }
+                    cpu->cc = getCC(cpu->mdr); // TODO should this be set in this phase?
+                    break;
+                case NOT:
+                    cpu->mdr = ~cpu->registers[sr1]; // Interpret as a negative if the leading bit is a 1.
+                    cpu->cc = getCC(cpu->mdr); // TODO should this be set in this phase?
+                    break;
+                case TRAP:
+                    // Book page 222.
+                    cpu->registers[7] = cpu->pc; // Store the PC in R7 before loading PC with the starting address of the service routine.
+                    trap(vector, cpu);
+                    break;
+                case JMP:
+                    cpu->pc = cpu->registers[sr1];
+                    break;
+                case BR: ;
+                    offset = SEXT(offset, BIT_PCOFFSET9);
+                    if (branchEnabled(nzp, cpu)) {
+                        cpu->pc += (offset);
+                    }
+                    break;
+            }
+            state = STORE; // Moving to next state.
+            break;
+
+		/* The sixth state of the instruction cycle, the "store" state. */
+		case STORE:
+			/* Corresponding to FSM state 16. */
+			switch (cpu->opcode)
+			{
+                // write back to register or store MDR into memory
+                case ADD:
+                case AND: // Same as ADD
+                case NOT: // Same as AND and AND.
+                    cpu->registers[dr] = cpu->mdr;
+                    break;
+                case LD:
+                case LDR:
+                    cpu->registers[dr] = cpu->mdr; // Load into the register.
+                    cpu->cc = getCC(cpu->registers[dr]);
+                    break;
+                case ST:
+                case STR:
+                    memory[cpu->mar] = cpu->mdr;     // Store into memory.
+                    break;
+                case LEA:
+                    cpu->registers[dr] = cpu->pc + offset;
+                    cpu->cc = getCC(cpu->registers[dr]);
+                    break;
                 // do any clean up here in prep for the next complete cycle
                 isCycleComplete = true;
                 state = FETCH;
                 break;
-        } // end switch (state)
+            }
+		} // end switch (state)
 
-        if (isHalted) {
+        if (isHalted)
+        {
             cpu->pc = 0;
         }
 
-        if (isHalted || isCycleComplete) {
+        if (isHalted || isCycleComplete)
+        {
            break;
         }
-    } // end for()
-    return 0;
+	} //end while loop
 } // end controller()
 
-/**
- * Sets the condition code resulting by the resulting computer value.
- * @param value the value that was recently computed.
- * @return the condition code that represents the 3bit NZP as binary.
+/*
+ * This function assignes a binary representation of a given 16-bit integer
+ * in the form of a one-dimensional array.
  */
-bool branchEnabled(unsigned short nzp, CPU_p *cpu) {
-    bool result = false;
-    switch(nzp) {
-    case CONDITION_NZP:
-	result = true;
-	break;
-    case CONDITION_NP:
-	if (cpu->cc == CONDITION_N || cpu->cc == CONDITION_P)
-	    result = true;
-	break;
-    case CONDITION_NZ:
-	if (cpu->cc == CONDITION_N || cpu->cc == CONDITION_Z)
-	    result = true;
-	break;
-    case CONDITION_ZP:
-	if (cpu->cc == CONDITION_Z || cpu->cc == CONDITION_P)
-	    result = true;
-	break;
-    case CONDITION_N:
-	if (cpu->cc == CONDITION_N)
-	    result = true;
-	break;
-    case CONDITION_Z:
-	if (cpu->cc == CONDITION_Z)
-	    result = true;
-	break;
-    case CONDITION_P:
-	if (cpu->cc == CONDITION_P)
-	    result = true;
-	 break;
-    }    
-    return result;
+void int16_to_binary_IR_contents(int *binary_IR_contents, unsigned short input_number)
+{
+	/* Ensure space in memory is clear of contents/zeroed. */
+	int i;
+	for (i = 0; i < NUM_OF_BITS; i++)
+	{
+		binary_IR_contents[i] = 0;
+	}
+
+	/* Convert the integer bit-by-bit into binary (in the array). */
+	int temp_array[NUM_OF_BITS];
+	for (i = 0; i < NUM_OF_BITS; i++)
+	{
+		temp_array[i] = input_number % 2;
+		input_number = input_number / 2;
+	}
+
+	/* Reverse the order the bits and store in binary_IR_contents. */
+	for (i = 0; i < NUM_OF_BITS; i++)
+	{
+		binary_IR_contents[15 - i] = temp_array[i];
+	}
+}
+
+/*
+ * This function receives a binary integer array, a target binary array, 
+ * a start bit, and a length bit. With this information, the function
+ * finds and returns an integer representation of a 16-bit binary subarray of
+ * a given binary array based on a given start bit and bit length.
+ */
+int binary_IR_contents_to_int16(int *binary_IR_helper_array, int *binary_IR_contents, int start, int length)
+{
+	/* Ensure space in memory is clear of contents/zeroed. */
+	int i;
+	for (i = 0; i < NUM_OF_BITS; i++)
+	{
+		binary_IR_helper_array[i] = 0;
+	}
+
+	for (i = 0; i < length; i++)
+	{
+		binary_IR_helper_array[i] = binary_IR_contents[start + i];
+	}
+
+	/* Finally, calculate and return the integer value. */
+	int final_value = 0;
+	for (i = 0; i < length; i++)
+	{
+		final_value = final_value * 2;
+		final_value += binary_IR_helper_array[i];
+	}
+
+	return final_value;
+}
+
+/*
+ * This function that determines and executes the appropriate trap routine based on the
+ * trap vector passed.
+ */
+void trap(unsigned short vector, CPU_p cpu)
+{
+	char c;
+
+	switch (vector)
+	{
+		case TRAP_VECTOR_X25:
+			/* Exit program state. */
+			cpu->state = FETCH;
+			cpu->halted = 1;
+			break;
+
+		case TRAP_VECTOR_X20:
+			/* getch */
+
+			c = getc(stdin);
+			break;
+
+		case TRAP_VECTOR_X21:
+			/* out (same as putc or simple prinf("%c");) */
+			putc(c, stdout);			
+			break;
+
+		case TRAP_VECTOR_X22:
+			/* puts (simple printf without /n) */
+			for (int i = 0; i < cpu->registers[0]; i++) {
+				if (i == '\0') {
+					break;
+				} else { 
+					display_monitor_print_output(i);
+				}
+			}
+
+			break;
+
+	}
+}
+
+/**
+* This function will take the loaction of the high order bit of the immediate value
+* and sign extend it so that if the high order bit is a 1, then it will be converted to
+* negative value.
+* 
+* @param value is the number to be sign extended.
+* @param instance determines what the high order bit is of the value.
+*/
+short SEXT(unsigned short theValue, int highOrderBit) {
+    short value = (short) theValue;
+    switch(highOrderBit) {
+    case BIT_IMMED:
+        if (((value & BIT_IMMED) >> BITSHIFT_NEGATIVE_IMMEDIATE) == 1) 
+                value = value | MASK_NEGATIVE_IMMEDIATE;
+        break;
+    case BIT_PCOFFSET11:
+        if (((value & BIT_PCOFFSET11) >> BITSHIFT_NEGATIVE_PCOFFSET11) == 1)
+            value = value | MASK_NEGATIVE_PCOFFSET11;
+        break;
+    case BIT_PCOFFSET9:
+        if (((value & BIT_PCOFFSET9) >> BITSHIFT_NEGATIVE_PCOFFSET9) == 1)
+            value = value | MASK_NEGATIVE_PCOFFSET9;
+        break;
+    case BIT_PCOFFSET6:
+        if (((value & BIT_PCOFFSET6) >> BITSHIFT_NEGATIVE_PCOFFSET6) == 1)
+            value = value | MASK_NEGATIVE_PCOFFSET6;
+        break;
+    }
+    return value;
 }
 
 /**
@@ -350,475 +493,289 @@ unsigned short getCC(unsigned short value) {
     return code;
 }
 
-
 /**
- * This returns the same value except it is converted to a signed short instead.
+ * Sets the condition code resulting by the resulting computer value.
+ * @param value the value that was recently computed.
+ * @return the condition code that represents the 3bit NZP as binary.
  */
-short toSign(unsigned short value) {
-    short signedValue = value;
-    return signedValue;
+bool branchEnabled(unsigned short nzp, CPU_p cpu) {
+    bool result = false;
+    switch(nzp) {
+    case CONDITION_NZP:
+        result = true;
+        break;
+    case CONDITION_NP:
+        if (cpu->cc == CONDITION_N || cpu->cc == CONDITION_P)
+            result = true;
+        break;
+    case CONDITION_NZ:
+        if (cpu->cc == CONDITION_N || cpu->cc == CONDITION_Z)
+            result = true;
+        break;
+    case CONDITION_ZP:
+        if (cpu->cc == CONDITION_Z || cpu->cc == CONDITION_P)
+            result = true;
+        break;
+    case CONDITION_N:
+        if (cpu->cc == CONDITION_N)
+            result = true;
+        break;
+    case CONDITION_Z:
+        if (cpu->cc == CONDITION_Z)
+            result = true;
+        break;
+    case CONDITION_P:
+        if (cpu->cc == CONDITION_P)
+            result = true;
+         break;
+    }    
+    return result;
 }
 
-/**
-* This function will take the loaction of the high order bit of the immediate value
-* and sign extend it so that if the high order bit is a 1, then it will be converted to
-* negative value.
-* 
-* @param value is the number to be sign extended.
-* @param instance determines what the high order bit is of the value.
-*/
-short SEXT(unsigned short theValue, int highOrderBit) {
-    short value = (short) theValue;
-    switch(highOrderBit) {
-    case BIT_IMMED:
-	if (((value & BIT_IMMED) >> BITSHIFT_NEGATIVE_IMMEDIATE) == 1) 
-            value = value | MASK_NEGATIVE_IMMEDIATE;
-	break;
-    case BIT_PCOFFSET11:
-	if (((value & BIT_PCOFFSET11) >> BITSHIFT_NEGATIVE_PCOFFSET11) == 1)
-	    value = value | MASK_NEGATIVE_PCOFFSET11;
-	break;
-    case BIT_PCOFFSET9:
-	if (((value & BIT_PCOFFSET9) >> BITSHIFT_NEGATIVE_PCOFFSET9) == 1)
-	    value = value | MASK_NEGATIVE_PCOFFSET9;
-	break;
-    case BIT_PCOFFSET6:
-	if (((value & BIT_PCOFFSET6) >> BITSHIFT_NEGATIVE_PCOFFSET6) == 1)
-	    value = value | MASK_NEGATIVE_PCOFFSET6;
-	break;
-    }
-    return value;
-}
-
-/**
- * Simulating a ZEXT operation.
+/*
+ * This function will set the condition code based on the input number passed.
  */
-unsigned short ZEXT(unsigned short value) {
-    // Simulated ZEXT.
-    return value;
-}
-
-// OLD FUNCTION WITHOUT NCURSES.
-/*void displayCPU(CPU_p *cpu, int memStart) {
-    for(;;) {
-        //printf("---displayCPU()\n"); // debugging
-        bool rePromptUser = true;
-        int menuSelection = 0;
-        int newStart = 0;
-        char *fileName[FILENAME_SIZE];
-        unsigned short tempMar = 0;
-        //printf("isHalted=%d  ", isHalted);
-        printf("Welcome to the LC-3 Simulator Simulator\n");
-        printf("Registers                     Memory\n");
-
-        // First 8 lines
-        int i = 0;
-        for(i = 0; i < 8; i++) {
-            printf("R%u: x%04X", i, cpu->reg[i]);   // Registers.
-            printf("                  x%04X: x%04X\n", i+memStart, memory[i + (memStart - ADDRESS_MIN)]); // Memory.
-        }
-
-        // Next 3 lines
-        int j;
-        for (j = 0; j < 3; j++) {
-            printf("                           x%04X: x%04X\n", i+memStart, memory[i + (memStart - ADDRESS_MIN)]);
-            i++;
-        }
-
-        // Next 4 lines.
-        printf("PC:  x%04X    IR: x%04X    x%04X: x%04X\n", cpu->pc+ADDRESS_MIN, cpu->ir, i+memStart, memory[i + (memStart - ADDRESS_MIN)]);
-        i++;
-        printf("A:   x%04X     B: x%04X    x%04X: x%04X\n", cpu->A, cpu->B, i+memStart, memory[i + (memStart - ADDRESS_MIN)]);
-        i++;
-        printf("MAR: x%04X   MDR: x%04X    x%04X: x%04X\n", cpu->mar+ADDRESS_MIN, cpu->ir, i+memStart, memory[i + (memStart - ADDRESS_MIN)]);
-        i++;
-        printf("CC:  N:%d Z:%d P:%d           x%04X: x%04X\n",
-                cpu->cc >> BITSHIFT_CC_BIT3 & MASK_CC_N,
-                cpu->cc >> BITSHIFT_CC_BIT2 & MASK_CC_Z,
-                cpu->cc  & MASK_CC_P,
-                i+ADDRESS_MIN,
-                memory[i + (memStart - ADDRESS_MIN)]);
-
-        i++;
-        // Last 2 lines.
-        printf("                           x%04X: x%04X\n", i+memStart, memory[i + (memStart - ADDRESS_MIN)]);
-        while(rePromptUser) {
-            rePromptUser = false;
-            printf("Select: 1) Load,  3) Step,  5) Display Mem,  9) Exit\n");
-            fflush(stdout);
-
-            scanf("%d", &menuSelection); // TODO put this back in.  Just debugging.
-            //menuSelection = 3; //TODO debugging, remove me.
-
-            switch(menuSelection) {
-                case 1:
-                    printf("Specify file name: ");
-                    fflush(stdout);
-                    scanf("%s", fileName);
-                    loadProgramInstructions(openFileText(fileName));
-                    break;
-                case 3:
-                    //printf("CASE3\n"); // do nothing.  Just let the PC run the next instruction.
-                    controller(cpu); // invoke exclusively in case 3.
-                    break;
-                case 5:
-                    printf("New Starting Address: x");
-                    fflush(stdout);
-                    scanf("%4X", &newStart);
-
-                    displayCPU(cpu, newStart);
-                    //printf("CASE5\n"); // Update the window for the memory registers.
-                    break;
-                case 9:
-                    //printf("CASE9\n");
-                    //cpu->IR = 0xF025; // TRAP x25
-                    printf("\nBubye\n");
-                    exit(0);
-                    break;
-                default:
-                    printf("---Invalid selection\n.");
-                    rePromptUser = true;
-                    break;
-            }
-            //fflush(stdout);
-        }
-    }
-}*/
-
-/**
- * Print out fields to the console for the CPU_p object.
- * @param cpu the cpu object containing the data.
- */
-void displayCPU(CPU_p *cpu, int memStart) {
-    int c;
-    int hexExit;
-    isHalted = false; // TODO does this affect anything adversely?
-    initscr();
-    cbreak();
-    clear();
-    WINDOW *main_win = newwin(32, 49, 0, 0);
-    box(main_win, 0, 0);
-    refresh();
-
-    while(1) {
-        bool rePromptUser = true;
-        bool rePromptHex = true;
-        int menuSelection = 0;
-        int newStart = 0;
-        char inStart[4];
-        char *fileName = malloc(FILENAME_SIZE * sizeof(char)); //char fileName[FILENAME_SIZE];
-        mvwprintw(main_win, 1, 1,  "Welcome to the LC-3 Simulator Simulator");
-        mvwprintw(main_win, 2, 1,  "Registers");
-        mvwprintw(main_win, 2, 31, "Memory");
-
-        // First 8 lines
-        int i = 0;
-        for(i = 0; i < 8; i++) {
-            mvwprintw(main_win, 3+i, 1, "R%u: x%04X", i, cpu->reg[i]);   // Registers.
-            mvwprintw(main_win, 3+i, 28, "x%04X: x%04X", i+memStart, memory[i + (memStart - ADDRESS_MIN)]); // Memory.
-        }
-
-        // Next 3 lines
-        int j = 0;
-        for (j = 0; j < 3; j++) {
-            mvwprintw(main_win, 11+j, 28, "x%04X: x%04X", i+memStart, memory[i + (memStart - ADDRESS_MIN)]);
-            i++;
-        }
-
-        // Next 4 lines.
-        mvwprintw(main_win, 14, 1, "PC:  x%04X    IR: x%04X    x%04X: x%04X", cpu->pc+ADDRESS_MIN, cpu->ir, i+memStart, memory[i+(memStart-ADDRESS_MIN)]);
-        i++;
-        mvwprintw(main_win, 15, 1, "A:   x%04X     B: x%04X    x%04X: x%04X", cpu->A, cpu->B, i+memStart, memory[i+(memStart - ADDRESS_MIN)]);
-        i++;
-        mvwprintw(main_win, 16, 1, "MAR: x%04X   MDR: x%04X    x%04X: x%04X", cpu->mar+ADDRESS_MIN, cpu->ir, i+memStart, memory[i+(memStart-ADDRESS_MIN)]);
-        i++;
-        mvwprintw(main_win, 17, 1, "CC:  N:%d Z:%d P:%d           x%04X: x%04X",
-                (cpu->cc >> BITSHIFT_CC_BIT3) & MASK_CC_N,
-                (cpu->cc >> BITSHIFT_CC_BIT2) & MASK_CC_Z,
-                cpu->cc  & MASK_CC_P,
-                i+ADDRESS_MIN,
-                memory[i+(memStart-ADDRESS_MIN)]);
-
-        i++;
-        // Last 2 lines.
-        mvwprintw(main_win, 18, 28, "x%04X: x%04X", i+memStart, memory[i + (memStart - ADDRESS_MIN)]);
-        mvwprintw(main_win, 19, 1, "Select: 1) Load 3) Step 5) Display Mem  9) Exit");
-        mvwprintw(main_win, 20, 1, "        2) Run                                 ");
-        cursorAtPrompt(main_win, "");
-        if (cpu->pc == 0 && !isHalted) {
-            // Only do a single time, else what you want to display gets obliterated.
-            mvwprintw(main_win, 23, 1, "Input                                          ");
-            mvwprintw(main_win, 24, 1, "Output                                         ");
-	    outputColCounter = 0;
-        }
-        cursorAtPrompt(main_win, ""); // twice necessary to prevent overwrite.
-
-        while(rePromptUser) {
-            rePromptUser = false;
-            CPU_p cpuTemp;
-            move(21, 1);
-            clrtoeol();
-            move(22, 1);
-            clrtoeol();
-            move(23, 1);
-            clrtoeol();
-            move(24, 1);
-            clrtoeol();
-            noecho();
-            if (isRun) {
-                c = '3'; // keep stepping until TRAP x25 is hit.
-            } else {
-                c = wgetch(main_win); // This is what stops to prompt the user for an Option input.
-            }
-            echo();
-            box(main_win, 0, 0);
-            refresh();
-            switch(c){
-                case '1':
-                    cpuTemp = initialize();
-                    clearOutput(main_win);
-                    isHalted = false;
-                    cpu = &cpuTemp;
-                    cursorAtPrompt(main_win, "Specify file name: ");
-                    wgetstr(main_win, fileName);
-                    loadProgramInstructions(openFileText(fileName, main_win), main_win);
-                    free(fileName);
-                    box(main_win, 0, 0);
-                    refresh();
-                    break;
-                case '2':
-                    
-                    isRun = true;
-                    break;
-                case '3':
-                    //printf("CASE3\n"); // do nothing.  Just let the PC run the next instruction.
-                    controller(cpu, main_win); // invoke exclusively in case 3.
-                    break;
-                case '5':
-                    while (rePromptHex) {
-                        //mvwprintw(main_win, 21, 1, "Push Q to return to main menu.");
-                        //mvwprintw(main_win, 22, 1, "New Starting Address: x");
-                        cursorAtPrompt(main_win, "New Starting Address: ");
-                        wgetstr(main_win, inStart);
-                        box(main_win, 0, 0);
-                        refresh();
-                        if (inStart[0] == 'q' || inStart[0] == 'Q') {
-                            cursorAtPrompt(main_win, "");
-                            rePromptUser = true;
-                            break;
-                        }
-                        if (hexCheck(inStart)) {
-                            newStart = strtol(inStart, NULL, MAX_BIN_BITS);
-                            displayCPU(cpu, newStart);
-                        } else {
-                            cursorAtPrompt(main_win, "You must enter a 4-digit hex value. Try again. ");
-                            rePromptHex = true;
-                        }
-                    }
-                    //printf("CASE5\n"); // Update the window for the memory registers.
-                    break;
-                case '9':
-                    //printf("CASE9\n");
-                    endwin();
-                    printf("Bubye\n");
-                    exit(0);
-                    break;
-                default:
-                    cursorAtPrompt(main_win, "---Invalid selection ");
-                    rePromptUser = true;
-                    break;
-            }
-            wrefresh(main_win);
-        }
-    }
-}
-
-void cursorAtPrompt(WINDOW *theWindow, char *theText) {
-    if (!isHalted) {
-         // First wipe out what ever is there.
-        mvwprintw(theWindow, 21, 1, "                                               ");
-    }
-    mvwprintw(theWindow, 22, 1, "-----------------------------------------------");
-    mvwprintw(theWindow, 21, 1, theText); //The last place the cursor will sit.
-    refresh();
-}
-
-void cursorAtInput(WINDOW *theWindow, char *theText) {
-    int input = mvwgetch(theWindow, 23, 8);
-    theText[0] = input;
-    refresh();
-}
-
-void cursorAtOutput(WINDOW *theWindow, char *theText) {
-    int i;
-    char *text = (char*) malloc(sizeof(char) * 2);
-    text[1] = '\0';
-    for (i = 0; i < strlen(theText); i++) {
-	text[0] = theText[i];
-	mvwprintw(theWindow, OUTPUT_LINE_NUMBER + outputLineCounter, OUTPUT_COL_NUMBER + outputColCounter, text);
-	outputColCounter++;
-	if (theText[i] == 10) {
-	    outputLineCounter++;
-	    outputColCounter = 0;
+void set_condition_code(int input_number, CPU_p cpu)
+{
+	if (input_number > 0)
+	{
+		cpu->cc = 1; /* P */
 	}
-    }
-    //mvwprintw(theWindow, OUTPUT_LINE_NUMBER + outputLineCounter, 8, theText);
-    //outputLineCounter++;
-    refresh();
+	else if (input_number < 0)
+	{
+		cpu->cc = 4; /* N */
+	}
+	else
+	{
+		cpu->cc = 2; /* Z */
+	}
 }
 
-void clearOutput(WINDOW *theWindow) {
-    int i;
-    mvwprintw(theWindow, OUTPUT_LINE_NUMBER, 1, "Output                                         ");
-    for (i = 1; i <= OUTPUT_AREA_DEPTH; i++) {
-        mvwprintw(theWindow, OUTPUT_LINE_NUMBER + i, 2, "                                              ");
-    }
-    refresh();
-    outputLineCounter = 0;
-}
-
-void cursorAtCustom(WINDOW *theWindow, int theRow, int theColumn, char *theText) {
-    mvwprintw(theWindow, theRow, theColumn, theText);
-    refresh();
-}
-
-/**
- * A function to check the validity of a hex number.
- * Returns 1 if true, 0 if false.
+/*
+ * This function finds and returns the integer value of the opcode 
+ * based on input memory.
  */
-int hexCheck(char num[]) {
-    int counter = 0;
-    int valid = 0;
-    int i;
+int get_opcode(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to the first 4 bits of memory. */
+	int opcode = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 0, 4);
 
-    for (i = 0; i < 4; i++) {
-        if (isxdigit(num[i])) {
-            counter++;
-        }
-    }
-    if (counter == 4) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-/**
- * Sets all elements to zero.
- */
-void zeroOut(unsigned short *array, int quantity) {
-    int i;
-    for (i = 0; i <= quantity; i++) {
-        array[i] = 0;
-    }
+	return opcode;
 }
 
-/**
- * Initializes a CPU_p object and its fields.
- * Removes the junk from these memory locations.
+/*
+ * This function finds and returns the integer value of the destination register
+ * based on input memory.
  */
-CPU_p initialize() {
-    CPU_p cpu = { 0    // PC
-                , CONDITION_Z    // cc
-                , { 0, 0, 0, 0, 0, 0, 0, 0 }
-                , 0    // ir
-                , 0    // mar
-                , 0
-                , 0
-                , 0
-                , 0};  // mdr
+int get_destination_register(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bits [4:6] in memory. */
+	int destination_register = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 4, 3);
 
-    zeroOut(memory, 100);
-
-    // Intentionally hard coding these values into two memory registers.
-    //cpu.reg[0] = 3;
-    //cpu.reg[7] = 4;
-    //cpu->reg[3] = 0xB0B0;   // Intentional simulated data.
-    //memory[4]  = 0xA0A0;   // Intentional simulated data.
-    //cpu->reg[0] = 0xD0E0;   // Intentional simulated data.
-    return cpu;
+	return destination_register;
 }
 
-/**
- * Opens a text file in read only mode.
- * @param theFileName the file name to open, in this present working directory.
- * @return the pointer to the file now opened.
+/*
+ * This function finds and returns the integer value of the SR1 register
+ * based on input memory.
  */
-FILE* openFileText(char *theFileName, WINDOW *theWindow) {
-    //printf("You said %s", theFileName); // debugging, remove me.
-    FILE *dataFile;
-    dataFile = fopen(theFileName, "r");
-    //if ((dataFile = fopen(theFileName, "r")) == NULL) {
-    if (dataFile == NULL) {
-    //  printf("\n---ERROR: File %s could not be opened.\n\n", theFileName);
-        char temp;
-        if(theWindow == NULL) {
-            printf("Error, File not found.  Press <ENTER> to continue.");
-            fflush(stdin);
-            temp = getchar(); // BUG this does not work as expected in option #1.
-            printf("\n");
-        } else {
-            cursorAtPrompt(theWindow, "Error, File not found.");
-            isHalted = true;
-        }
-    } else {
-        isHalted = false;
-        //printf("\nSUCCESS: File Found: %s\n\n", theFileName); // debugging
-    }
-    return dataFile;
+int get_source1_register(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bits [7:9] in memory. */
+	int source1_register = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 7, 3);
+
+	return source1_register;
 }
 
-/**
- * Loads the the instructions from the text file into memory[].
- * Expects one instruction per line, in hex number form, and a new line character.
- * @param inputFile the file to read.
+/*
+ * This function finds and returns the integer value of the SR2 register
+ * based on input memory.
  */
-void loadProgramInstructions(FILE *inputFile, WINDOW *theWindow) {
-    if (inputFile != NULL){
-        char instruction [5]; // includes room for the carriage return character.
-        int length = sizeof(instruction);
-        int i = 0;
-        unsigned short startingAddress = 0;
+int get_source2_register(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bits [13:15] in memory. */
+	int source2_register = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 13, 3);
 
-        /* The first line in the inputfile is actually the starting address of
-           where to begin loading the instructions into memory.  This is
-           a result of the .ORIG instruction in assembly. */
-        if(!feof(inputFile)) {
-            fgets(instruction, length, inputFile);
-            startingAddress = strtol(instruction, NULL, MAX_BIN_BITS);
-            fgets(instruction, length, inputFile); // processes the carriage return character.
-        }
-
-        // In this simulator, we start at ADDRESS_MIN which is the zero'th element in memory[].
-        if (startingAddress >= ADDRESS_MIN) {
-            i = (startingAddress - ADDRESS_MIN);
-            while(!feof(inputFile)) {
-                fgets(instruction, length, inputFile);
-                memory[i] = strtol(instruction, NULL, MAX_BIN_BITS);
-                //printf("\n %04X", memory[i]); // debugging, confirms the memory[] does have the data.
-                fgets(instruction, length, inputFile); // processes the carriage return character.
-                i++;
-                }
-        } else {
-            if(theWindow == NULL) {
-                printf("Error, address must be between %x and %x\n"
-                    , ADDRESS_MIN, (ADDRESS_MIN + MEMORY_SIZE));
-            } else {
-                cursorAtPrompt(theWindow, "Error, address "); // TODO specify min and max address.
-                isHalted = true;
-            }
-        }
-        fclose(inputFile);
-    }
+	return source2_register;
 }
 
-/**
- * Driver for the program.
+/*
+ * This function finds and returns the integer value of the PC offset
+ *  based on input memory.
  */
-int main(int argc, char* argv[]) {
-    char *fileName = argv[1]; //char *fileName = "./HW3.hex";
-    CPU_p cpu = initialize();
-    if(fileName != NULL) {
-        loadProgramInstructions(openFileText(fileName, NULL), NULL);
-    }
-    displayCPU(&cpu, ADDRESS_MIN); // send the address of the object.
+int get_pcoffset9(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bits [7:15] in memory. */
+	int pc_offset9 = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 7, 9);
+
+	return pc_offset9;
+}
+
+/*
+ * This function finds and returns the immediate mode for 
+ * the AND and ADD instructions based on the contents of the instruction register (IR).
+ */
+int get_immediate_mode(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bit [10] in memory. */
+	int immedate_mode = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 10, 1);
+
+	return immedate_mode;
+}
+
+/*
+ * This function finds and returns the immediate mode for 
+ * the JSR and the JSRR instructions based on the contents of the instruction register (IR).
+ */
+int get_jsr_immediate_mode(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bit [11] in memory. */
+	int jsr_immedate_mode = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 11, 1);
+
+	return jsr_immedate_mode;
+}
+
+/*
+ * This function finds and returns the immediate value for
+ * the AND and ADD instructions based on the contents of the instruction register (IR).
+ */
+int get_immediate_value(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bits [11:15] in memory. */
+	int immediate_value = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 11, 5);
+
+	return immediate_value;
+}
+
+/* 
+ * This function finds and returns the immediate value for
+ * the JSR and JSRR instructions based on the contents of the instruction register (IR).
+ */
+int get_jsr_immediate_value(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bits [10:0] in memory. */
+	int jsr_immediate_value = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 10, 11);
+
+	return jsr_immediate_value;
+}
+
+/*
+ * This function determines and returns a 1 or 0 to represent if a branch 
+ * should be taken or not.
+ */
+int get_branch_enabled(int *binary_IR_contents, int *binary_IR_helper_array, CPU_p cpu)
+{
+	/* Corresponds to bits [4:6] in memory. */
+	binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 4, 3);
+
+	/* Convert the condition code to an integer array for bit comparison. */
+	int *condition_code = (int *)malloc(sizeof(int) * 3);
+	int input_number = cpu->cc, i;
+	int temp_array[3];
+
+	for (i = 0; i < 3; i++)
+	{
+		temp_array[i] = input_number % 2;
+		input_number = input_number / 2;
+	}
+	for (i = 0; i < 3; i++)
+	{
+		condition_code[2 - i] = temp_array[i];
+	}
+
+	/* Finally, determine if branch should be enabled. */
+	int result = 0;
+	for (i = 0; i < 3; i++)
+	{
+		if (binary_IR_helper_array[i] == condition_code[i])
+		{
+			result = 1; /* If any bit is shared between the two, set branch enabled to 1. */
+		}
+	}
+
+	/* Memory cleanup. */
+	free(condition_code);
+	return result;
+}
+
+/*
+ * This function finds and returns the trap vector value.
+ */
+int get_trap_vector(int *binary_IR_contents, int *binary_IR_helper_array)
+{
+	/* Corresponds to bits [8:15] in memory. */
+	int trap_vector = binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 8, 8);
+
+	return binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 8, 8);
+}
+
+/* 
+ * This function prints a binary representation of a given unsigned integer value to the screen.
+ */
+void print_binary_form(unsigned value)
+{
+	if (value > 1)
+		print_binary_form(value / 2);
+
+	printf("%d", value % 2);
+}
+
+/*
+ * This function will translate a given LC-3 user space memory address (which begins at 0x3000) into 
+ * a regular memory address (which begins at 0x0).
+ */
+unsigned int translate_memory_address(unsigned int input_address)
+{
+	return input_address - 0x3000;
+}
+
+/* 
+ * This function will allow the opening of files
+ */
+FILE *open_file()
+{
+	/* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to 
+	return to main program of the menu. */
+	FILE *input_file_pointer;
+	input_file_pointer = fopen(load_file_input, "r");
+	if (input_file_pointer == NULL)
+	{
+		/* 
+		 * Error checking is hard to do with this file structure... How can we get an
+		 * error message back to the display_monitor? We would want an error message to
+		 * appear right under the user selection options.
+		 */
+	}
+	return input_file_pointer;
+}
+
+/*
+ * This function allows for the loading of hex files into memory.
+ */
+void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
+{
+	char line[64];
+	fgets(line, sizeof(line), input_file_pointer);
+
+	/* 
+	 * Subtract 0x3000 from first hex value in file to be starting memory location
+	 * Note: This requires the first line of the hex file to not be less than x3000 since
+	 * this is an unsigned short. 
+	 * 
+	 * IDEA: Create offset variable to hold difference between given start location and x3000?
+	 * This could be positive or negative value? Then compute from this value.
+	 */
+	unsigned short starting_address = strtol(line, NULL, 16);
+	starting_address = translate_memory_address(starting_address);
+
+	/* Read through file line by line and store to CPU memory. */
+	unsigned short address;
+	int result = 1;
+	int i = 0;
+	while (fscanf(input_file_pointer, "%hx", &address) != EOF)
+	{
+		cpu->memory[starting_address + i] = address;
+		i += 1;
+	}
+	file_loaded = 1;
 }

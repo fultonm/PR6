@@ -42,7 +42,6 @@
 #define NUM_OF_REGISTERS 8
 #define NUM_OF_MEM_BANKS 512
 
-#define MEMORY_SIZE       10000
 #define FILENAME_SIZE       200
 #define STRING_SIZE         200
 #define OUTPUT_LINE_NUMBER   24
@@ -127,7 +126,6 @@ typedef struct CPU
     ALU_p alu;
 	/* Various CPU registers and memory. */
 	unsigned short registers[NUM_OF_REGISTERS];
-	unsigned short memory[NUM_OF_MEM_BANKS];
 	unsigned short state;
 	unsigned short ir; // instruction_register
 	unsigned short pc; // program_counter
@@ -154,9 +152,12 @@ typedef struct CPU
 	unsigned char halted;
 } *CPU_p;
 
+/* Memory modules */
+unsigned short memory[NUM_OF_MEM_BANKS];
+
 /* Function Definitions */
 void controller(CPU_p cpu);
-void cpu_init(CPU_p cpu);
+void lc3_init(CPU_p cpu);
 void int16_to_binary_IR_contents(int *binary_IR_contents, unsigned short input_number);
 void trap(unsigned short, CPU_p cpu);
 void set_condition_code(int input_number, CPU_p cpu);

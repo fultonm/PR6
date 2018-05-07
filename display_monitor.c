@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <stdbool.h>
 #include "slc3.h"
 #include "display_monitor.h"
 

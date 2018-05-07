@@ -1,0 +1,861 @@
+==8394== Memcheck, a memory error detector
+==8394== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==8394== Using Valgrind-3.14.0.GIT-f1f543a224-20180416 and LibVEX; rerun with -h for copyright info
+==8394== Command: ./a.out
+==8394== Parent PID: 6257
+==8394== 
+--8394-- 
+--8394-- Valgrind options:
+--8394--    --log-file=.valgrindout
+--8394--    --tool=memcheck
+--8394--    --leak-check=yes
+--8394--    --show-reachable=yes
+--8394--    --num-callers=20
+--8394--    --track-fds=yes
+--8394--    --track-origins=yes
+--8394--    -v
+--8394-- Output from sysctl({CTL_KERN,KERN_VERSION}):
+--8394--   Darwin Kernel Version 17.5.0: Fri Apr 13 19:32:32 PDT 2018; root:xnu-4570.51.2~1/RELEASE_X86_64
+--8394-- Arch and hwcaps: AMD64, LittleEndian, amd64-cx16-lzcnt-rdtscp-sse3-avx-avx2-bmi
+--8394-- Page sizes: currently 4096, max supported 4096
+--8394-- Valgrind library directory: /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind
+--8394-- ./a.out (rx at 0x100000000, rw at 0x100004000)
+--8394--    reading syms   from primary file (72 206)
+--8394-- run: /usr/bin/dsymutil "./a.out"
+--8394--    dsyms= ./a.out.dSYM/Contents/Resources/DWARF/a.out
+--8394--    reading dwarf3 from dsyms file
+--8394-- /usr/lib/dyld (rx at 0x100010000, rw at 0x10005b000)
+--8394--    reading syms   from primary file (5 1487)
+--8394-- Scheduler: using generic scheduler lock implementation.
+--8394-- Reading suppressions file: /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp
+==8394== embedded gdbserver: reading from /var/folders/jm/pb6tp8n56k921nwhrwxlfxdc0000gn/T//vgdb-pipe-from-vgdb-to-8394-by-michael-on-???
+==8394== embedded gdbserver: writing to   /var/folders/jm/pb6tp8n56k921nwhrwxlfxdc0000gn/T//vgdb-pipe-to-vgdb-from-8394-by-michael-on-???
+==8394== embedded gdbserver: shared mem   /var/folders/jm/pb6tp8n56k921nwhrwxlfxdc0000gn/T//vgdb-pipe-shared-mem-vgdb-8394-by-michael-on-???
+==8394== 
+==8394== TO CONTROL THIS PROCESS USING vgdb (which you probably
+==8394== don't want to do, unless you know exactly what you're doing,
+==8394== or are doing some strange experiment):
+==8394==   /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/../../bin/vgdb --pid=8394 ...command...
+==8394== 
+==8394== TO DEBUG THIS PROCESS USING GDB: start GDB like this
+==8394==   /path/to/gdb ./a.out
+==8394== and then give GDB the following command
+==8394==   target remote | /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/../../bin/vgdb --pid=8394
+==8394== --pid is optional if only one valgrind process is running
+==8394== 
+--8394-- REDIR: 0x10003da60 (dyld:strcmp) redirected to 0x258056d81 (???)
+--8394-- REDIR: 0x100037b4c (dyld:arc4random) redirected to 0x258056e1f (???)
+--8394-- REDIR: 0x100037a00 (dyld:strlen) redirected to 0x258056d50 (???)
+--8394-- REDIR: 0x100037960 (dyld:strcpy) redirected to 0x258056d9d (???)
+--8394-- REDIR: 0x10003b086 (dyld:strcat) redirected to 0x258056d61 (???)
+--8394-- REDIR: 0x10003b0c4 (dyld:strlcat) redirected to 0x258056dba (???)
+--8394-- /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_core-amd64-darwin.so (rx at 0x1000ae000, rw at 0x1000b4000)
+--8394--    reading syms   from primary file (3 91)
+--8394--    dSYM= /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_core-amd64-darwin.so.dSYM/Contents/Resources/DWARF/vgpreload_core-amd64-darwin.so
+--8394-- /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so (rx at 0x1000b8000, rw at 0x1000c1000)
+--8394--    reading syms   from primary file (72 99)
+--8394--    dSYM= /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so.dSYM/Contents/Resources/DWARF/vgpreload_memcheck-amd64-darwin.so
+--8394-- /usr/lib/libncurses.5.4.dylib (rx at 0x1000c7000, rw at 0x1000f8000)
+--8394--    reading syms   from primary file (618 1)
+--8394-- /usr/lib/libmenu.5.4.dylib (rx at 0x100108000, rw at 0x10010c000)
+--8394--    reading syms   from primary file (79 1)
+--8394-- /usr/lib/libSystem.B.dylib (rx at 0x100111000, rw at 0x100113000)
+--8394--    reading syms   from primary file (31 5)
+--8394-- /usr/lib/system/libcache.dylib (rx at 0x100119000, rw at 0x10011e000)
+--8394--    reading syms   from primary file (32 29)
+--8394-- /usr/lib/system/libcommonCrypto.dylib (rx at 0x100123000, rw at 0x10012e000)
+--8394--    reading syms   from primary file (221 169)
+--8394-- /usr/lib/system/libcompiler_rt.dylib (rx at 0x10013b000, rw at 0x100143000)
+--8394--    reading syms   from primary file (510 8)
+--8394-- /usr/lib/system/libcopyfile.dylib (rx at 0x100150000, rw at 0x10015a000)
+--8394--    reading syms   from primary file (13 35)
+--8394-- /usr/lib/system/libcorecrypto.dylib (rx at 0x100160000, rw at 0x1001e6000)
+--8394--    reading syms   from primary file (511 677)
+--8394-- /usr/lib/system/libdispatch.dylib (rx at 0x100202000, rw at 0x10023c000)
+--8394--    reading syms   from primary file (271 943)
+--8394-- /usr/lib/system/libdyld.dylib (rx at 0x100276000, rw at 0x100294000)
+--8394--    reading syms   from primary file (97 992)
+--8394-- /usr/lib/system/libkeymgr.dylib (rx at 0x1002ae000, rw at 0x1002af000)
+--8394--    reading syms   from primary file (12 3)
+--8394-- /usr/lib/system/libmacho.dylib (rx at 0x1002ba000, rw at 0x1002bf000)
+--8394--    reading syms   from primary file (105 1)
+--8394-- /usr/lib/system/libquarantine.dylib (rx at 0x1002c5000, rw at 0x1002c8000)
+--8394--    reading syms   from primary file (67 32)
+--8394-- /usr/lib/system/libremovefile.dylib (rx at 0x1002ce000, rw at 0x1002d0000)
+--8394--    reading syms   from primary file (15 4)
+--8394-- /usr/lib/system/libsystem_asl.dylib (rx at 0x1002d5000, rw at 0x1002ed000)
+--8394--    reading syms   from primary file (222 225)
+--8394-- /usr/lib/system/libsystem_blocks.dylib (rx at 0x1002fa000, rw at 0x1002fb000)
+--8394--    reading syms   from primary file (21 6)
+--8394-- /usr/lib/system/libsystem_c.dylib (rx at 0x1002ff000, rw at 0x100389000)
+--8394--    reading syms   from primary file (1342 806)
+--8394-- /usr/lib/system/libsystem_configuration.dylib (rx at 0x1003b1000, rw at 0x1003b5000)
+--8394--    reading syms   from primary file (38 66)
+--8394-- /usr/lib/system/libsystem_coreservices.dylib (rx at 0x1003bb000, rw at 0x1003bf000)
+--8394--    reading syms   from primary file (14 37)
+--8394-- /usr/lib/system/libsystem_darwin.dylib (rx at 0x1003c4000, rw at 0x1003c6000)
+--8394--    reading syms   from primary file (12 105)
+--8394-- /usr/lib/system/libsystem_dnssd.dylib (rx at 0x1003cb000, rw at 0x1003d2000)
+--8394--    reading syms   from primary file (49 24)
+--8394-- /usr/lib/system/libsystem_info.dylib (rx at 0x1003d8000, rw at 0x100422000)
+--8394--    reading syms   from primary file (525 650)
+--8394-- /usr/lib/system/libsystem_m.dylib (rx at 0x100439000, rw at 0x100485000)
+--8394--    reading syms   from primary file (805 1)
+--8394-- /usr/lib/system/libsystem_malloc.dylib (rx at 0x100493000, rw at 0x1004b3000)
+--8394--    reading syms   from primary file (127 265)
+--8394-- /usr/lib/system/libsystem_network.dylib (rx at 0x1004bf000, rw at 0x1005f0000)
+--8394--    reading syms   from primary file (1125 1215)
+--8394-- /usr/lib/system/libsystem_networkextension.dylib (rx at 0x100630000, rw at 0x10063b000)
+--8394--    reading syms   from primary file (98 229)
+--8394-- /usr/lib/system/libsystem_notify.dylib (rx at 0x100647000, rw at 0x100651000)
+--8394--    reading syms   from primary file (113 54)
+--8394-- /usr/lib/system/libsystem_sandbox.dylib (rx at 0x100658000, rw at 0x10065c000)
+--8394--    reading syms   from primary file (93 8)
+--8394-- /usr/lib/system/libsystem_secinit.dylib (rx at 0x100662000, rw at 0x100664000)
+--8394--    reading syms   from primary file (1 7)
+--8394-- /usr/lib/system/libsystem_kernel.dylib (rx at 0x100669000, rw at 0x100690000)
+--8394--    reading syms   from primary file (1281 100)
+--8394-- /usr/lib/system/libsystem_platform.dylib (rx at 0x1006a9000, rw at 0x1006b1000)
+--8394--    reading syms   from primary file (157 101)
+--8394-- /usr/lib/system/libsystem_pthread.dylib (rx at 0x1006b9000, rw at 0x1006c5000)
+--8394--    reading syms   from primary file (178 77)
+--8394-- /usr/lib/system/libsystem_symptoms.dylib (rx at 0x1006d1000, rw at 0x1006d9000)
+--8394--    reading syms   from primary file (10 93)
+--8394-- /usr/lib/system/libsystem_trace.dylib (rx at 0x1006df000, rw at 0x1006f3000)
+--8394--    reading syms   from primary file (114 245)
+--8394-- /usr/lib/system/libunwind.dylib (rx at 0x100701000, rw at 0x100707000)
+--8394--    reading syms   from primary file (102 52)
+--8394-- /usr/lib/system/libxpc.dylib (rx at 0x10070e000, rw at 0x10073c000)
+--8394--    reading syms   from primary file (567 911)
+--8394-- /usr/lib/closure/libclosured.dylib (rx at 0x10075e000, rw at 0x100792000)
+--8394--    reading syms   from primary file (1 966)
+--8394-- /usr/lib/libobjc.A.dylib (rx at 0x1007ad000, rw at 0x100b9c000)
+--8394--    reading syms   from primary file (369 902)
+--8394-- /usr/lib/libc++abi.dylib (rx at 0x100d4c000, rw at 0x100d71000)
+--8394--    reading syms   from primary file (369 212)
+--8394-- /usr/lib/libc++.1.dylib (rx at 0x100d80000, rw at 0x100dd7000)
+--8394--    reading syms   from primary file (2023 1681)
+--8394-- REDIR: 0x1006a9ac0 (libsystem_platform.dylib:_platform_memchr$VARIANT$Haswell) redirected to 0x1000bb146 (_platform_memchr$VARIANT$Haswell)
+--8394-- REDIR: 0x1006a9ba0 (libsystem_platform.dylib:_platform_memcmp) redirected to 0x1000bb872 (_platform_memcmp)
+--8394-- REDIR: 0x1006aa0e0 (libsystem_platform.dylib:_platform_strncmp) redirected to 0x1000bb03c (_platform_strncmp)
+--8394-- REDIR: 0x100300220 (libsystem_c.dylib:strlen) redirected to 0x1000bacad (strlen)
+--8394-- REDIR: 0x1006aa6a0 (libsystem_platform.dylib:_platform_strcmp) redirected to 0x1000bb0bd (_platform_strcmp)
+--8394-- REDIR: 0x100497570 (libsystem_malloc.dylib:calloc) redirected to 0x1000b9b77 (calloc)
+--8394-- REDIR: 0x100496c1c (libsystem_malloc.dylib:malloc_default_zone) redirected to 0x1000ba8bd (malloc_default_zone)
+--8394-- REDIR: 0x100495156 (libsystem_malloc.dylib:malloc_zone_malloc) redirected to 0x1000b97c3 (malloc_zone_malloc)
+--8394-- REDIR: 0x100496c25 (libsystem_malloc.dylib:malloc_zone_calloc) redirected to 0x1000b9d65 (malloc_zone_calloc)
+--8394-- REDIR: 0x1004944af (libsystem_malloc.dylib:malloc) redirected to 0x1000b9550 (malloc)
+--8394-- REDIR: 0x100496ced (libsystem_malloc.dylib:malloc_zone_from_ptr) redirected to 0x1000ba8fe (malloc_zone_from_ptr)
+--8394-- REDIR: 0x100496619 (libsystem_malloc.dylib:free) redirected to 0x1000b9939 (free)
+--8394-- REDIR: 0x100497723 (libsystem_malloc.dylib:realloc) redirected to 0x1000b9ef9 (realloc)
+--8394-- REDIR: 0x1006aa2c0 (libsystem_platform.dylib:_platform_strchr$VARIANT$Haswell) redirected to 0x1000bab6e (_platform_strchr$VARIANT$Haswell)
+--8394-- REDIR: 0x1003599d5 (libsystem_c.dylib:strrchr) redirected to 0x1000bab05 (strrchr)
+--8394-- REDIR: 0x100300280 (libsystem_c.dylib:strncpy) redirected to 0x1000bae37 (strncpy)
+==8394== 
+==8394== FILE DESCRIPTORS: 9 open at exit.
+==8394== Open file descriptor 4: HW3.hex
+==8394==    at 0x1006858B2: open$NOCANCEL (in /usr/lib/system/libsystem_kernel.dylib)
+==8394==    by 0x10033C28B: fopen (in /usr/lib/system/libsystem_c.dylib)
+==8394==    by 0x100003A9A: open_file (slc3.c:761)
+==8394==    by 0x100002232: main (slc3.c:63)
+==8394== 
+==8394== Open file descriptor 26: /Applications/Visual Studio Code.app/Contents/Resources/app/node_modules.asar
+==8394==    <inherited from parent>
+==8394== 
+==8394== Open file descriptor 25: /Applications/Visual Studio Code.app/Contents/Resources/electron.asar
+==8394==    <inherited from parent>
+==8394== 
+==8394== Open AF_UNIX socket 24: <unknown>
+==8394==    <inherited from parent>
+==8394== 
+==8394== Open file descriptor 23: /Applications/Visual Studio Code.app/Contents/Resources/app/node_modules.asar
+==8394==    <inherited from parent>
+==8394== 
+==8394== Open file descriptor 3: /Users/michael/Documents/School/TCSS 372 Computer Architecture/pr6/.valgrindout
+==8394==    <inherited from parent>
+==8394== 
+==8394== Open file descriptor 2: /dev/ttys001
+==8394==    <inherited from parent>
+==8394== 
+==8394== Open file descriptor 1: /dev/ttys001
+==8394==    <inherited from parent>
+==8394== 
+==8394== Open file descriptor 0: /dev/ttys001
+==8394==    <inherited from parent>
+==8394== 
+==8394== 
+==8394== HEAP SUMMARY:
+==8394==     in use at exit: 872,974 bytes in 781 blocks
+==8394==   total heap usage: 133,995 allocs, 133,214 frees, 7,924,606 bytes allocated
+==8394== 
+==8394== Searching for pointers to 781 not-freed blocks
+==8394== Checked 11,669,408 bytes
+==8394== 
+==8394== 15 bytes in 1 blocks are still reachable in loss record 2 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1003595A2: strdup (in /usr/lib/system/libsystem_c.dylib)
+==8394==    by 0x1000DB9E2: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 24 bytes in 1 blocks are still reachable in loss record 8 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000DAD95: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 24 bytes in 1 blocks are still reachable in loss record 9 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000C8438: _nc_add_to_try (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CEEE2: _nc_init_keytry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D850F: _nc_keypad (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007F0: display_monitor_init (display_monitor.c:86)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 27 bytes in 1 blocks are still reachable in loss record 10 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CEE51: _nc_home_terminfo (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CDB92: _nc_next_db (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E4026: _nc_read_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB8BB: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 46 bytes in 1 blocks are still reachable in loss record 18 of 116
+==8394==    at 0x1000B9F7C: realloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CDECF: _nc_doalloc (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E397B: _nc_read_termtype (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E3F52: _nc_read_file_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E409E: _nc_read_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB8BB: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 66 bytes in 1 blocks are still reachable in loss record 30 of 116
+==8394==    at 0x1000B9F7C: realloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CDECF: _nc_doalloc (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DE133: tparm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D64AC: _nc_mvcur_init (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7D5F: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 72 bytes in 1 blocks are still reachable in loss record 31 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x100000868: display_monitor_init (display_monitor.c:99)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 72 bytes in 3 blocks are possibly lost in loss record 32 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1007AE7E2: map_images_nolock (in /usr/lib/libobjc.A.dylib)
+==8394==    by 0x1007C17DA: objc_object::sidetable_retainCount() (in /usr/lib/libobjc.A.dylib)
+==8394==    by 0x100014C64: dyld::notifyBatchPartial(dyld_image_states, bool, char const* (*)(dyld_image_states, unsigned int, dyld_image_info const*), bool, bool) (in /usr/lib/dyld)
+==8394==    by 0x100014E39: dyld::registerObjCNotifiers(void (*)(unsigned int, char const* const*, mach_header const* const*), void (*)(char const*, mach_header const*), void (*)(char const*, mach_header const*)) (in /usr/lib/dyld)
+==8394==    by 0x10027971D: _dyld_objc_notify_register (in /usr/lib/system/libdyld.dylib)
+==8394==    by 0x1007AE075: _objc_init (in /usr/lib/libobjc.A.dylib)
+==8394==    by 0x100203B84: _os_object_init (in /usr/lib/system/libdispatch.dylib)
+==8394==    by 0x100203B6B: libdispatch_init (in /usr/lib/system/libdispatch.dylib)
+==8394==    by 0x1001129C2: libSystem_initializer (in /usr/lib/libSystem.B.dylib)
+==8394==    by 0x100026A79: ImageLoaderMachO::doModInitFunctions(ImageLoader::LinkContext const&) (in /usr/lib/dyld)
+==8394==    by 0x100026CA9: ImageLoaderMachO::doInitialization(ImageLoader::LinkContext const&) (in /usr/lib/dyld)
+==8394==    by 0x1000221CB: ImageLoader::recursiveInitialization(ImageLoader::LinkContext const&, unsigned int, char const*, ImageLoader::InitializerTimingList&, ImageLoader::UninitedUpwards&) (in /usr/lib/dyld)
+==8394==    by 0x10002215E: ImageLoader::recursiveInitialization(ImageLoader::LinkContext const&, unsigned int, char const*, ImageLoader::InitializerTimingList&, ImageLoader::UninitedUpwards&) (in /usr/lib/dyld)
+==8394==    by 0x100021301: ImageLoader::processInitializers(ImageLoader::LinkContext const&, unsigned int, ImageLoader::InitializerTimingList&, ImageLoader::UninitedUpwards&) (in /usr/lib/dyld)
+==8394==    by 0x100021395: ImageLoader::runInitializers(ImageLoader::LinkContext const&, ImageLoader::InitializerTimingList&) (in /usr/lib/dyld)
+==8394==    by 0x100012520: dyld::initializeMainExecutable() (in /usr/lib/dyld)
+==8394==    by 0x100017238: dyld::_main(macho_header const*, unsigned long, int, char const**, char const**, char const**, unsigned long*) (in /usr/lib/dyld)
+==8394==    by 0x1000113D3: dyldbootstrap::start(macho_header const*, int, char const**, long, macho_header const*, unsigned long*) (in /usr/lib/dyld)
+==8394==    by 0x1000111D1: _dyld_start (in /usr/lib/dyld)
+==8394== 
+==8394== 78 bytes in 1 blocks are still reachable in loss record 33 of 116
+==8394==    at 0x1000B9F7C: realloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CDECF: _nc_doalloc (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E3993: _nc_read_termtype (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E3F52: _nc_read_file_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E409E: _nc_read_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB8BB: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 80 bytes in 1 blocks are still reachable in loss record 34 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000944: display_monitor_init (display_monitor.c:108)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 80 bytes in 1 blocks are still reachable in loss record 35 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000976: display_monitor_init (display_monitor.c:110)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 82 bytes in 1 blocks are still reachable in loss record 36 of 116
+==8394==    at 0x1000B9F7C: realloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CDECF: _nc_doalloc (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DD9EA: _nc_tparm_analyze (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DDDFA: tparm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D21A1: start_color (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D2B34: _nc_do_color (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E5622: doupdate (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D9A1F: wrefresh (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000018B2: print_title (display_monitor.c:250)
+==8394==    by 0x100000A04: draw_io_window (display_monitor.c:258)
+==8394==    by 0x10000095D: display_monitor_init (display_monitor.c:109)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 96 bytes in 1 blocks are still reachable in loss record 37 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x10000126B: display_monitor_update (display_monitor.c:349)
+==8394==    by 0x100000998: display_monitor_init (display_monitor.c:113)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 96 bytes in 1 blocks are still reachable in loss record 38 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x10000126B: display_monitor_update (display_monitor.c:349)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x1000021D2: main (slc3.c:50)
+==8394== 
+==8394== 128 bytes in 1 blocks are still reachable in loss record 40 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000DAD62: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 128 bytes in 1 blocks are still reachable in loss record 41 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100001194: display_monitor_update (display_monitor.c:343)
+==8394==    by 0x100000998: display_monitor_init (display_monitor.c:113)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 128 bytes in 1 blocks are still reachable in loss record 42 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100001194: display_monitor_update (display_monitor.c:343)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x1000021D2: main (slc3.c:50)
+==8394== 
+==8394== 160 bytes in 1 blocks are still reachable in loss record 44 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000920: display_monitor_init (display_monitor.c:106)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 192 bytes in 1 blocks are still reachable in loss record 47 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000008D9: display_monitor_init (display_monitor.c:104)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 49 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB16E: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 50 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB19A: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 51 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB2EF: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 52 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000008D9: display_monitor_init (display_monitor.c:104)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 53 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000008FC: display_monitor_init (display_monitor.c:105)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 54 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000920: display_monitor_init (display_monitor.c:106)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 55 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000944: display_monitor_init (display_monitor.c:108)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 56 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000976: display_monitor_init (display_monitor.c:110)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 57 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100001194: display_monitor_update (display_monitor.c:343)
+==8394==    by 0x100000998: display_monitor_init (display_monitor.c:113)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 58 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000011FF: display_monitor_update (display_monitor.c:346)
+==8394==    by 0x100000998: display_monitor_init (display_monitor.c:113)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 59 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x10000126B: display_monitor_update (display_monitor.c:349)
+==8394==    by 0x100000998: display_monitor_init (display_monitor.c:113)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 60 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100001194: display_monitor_update (display_monitor.c:343)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x1000021D2: main (slc3.c:50)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 61 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000011FF: display_monitor_update (display_monitor.c:346)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x1000021D2: main (slc3.c:50)
+==8394== 
+==8394== 200 bytes in 1 blocks are still reachable in loss record 62 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x10000126B: display_monitor_update (display_monitor.c:349)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x1000021D2: main (slc3.c:50)
+==8394== 
+==8394== 240 bytes in 1 blocks are still reachable in loss record 63 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000DB896: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 256 bytes in 1 blocks are still reachable in loss record 65 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000011FF: display_monitor_update (display_monitor.c:346)
+==8394==    by 0x100000998: display_monitor_init (display_monitor.c:113)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 256 bytes in 1 blocks are still reachable in loss record 66 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000011FF: display_monitor_update (display_monitor.c:346)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x1000021D2: main (slc3.c:50)
+==8394== 
+==8394== 276 bytes in 1 blocks are still reachable in loss record 68 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CE0D7: _nc_scroll_optimize (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E5746: doupdate (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D9A1F: wrefresh (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000A0D: draw_io_window (display_monitor.c:259)
+==8394==    by 0x10000095D: display_monitor_init (display_monitor.c:109)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 320 bytes in 1 blocks are still reachable in loss record 70 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000008FC: display_monitor_init (display_monitor.c:105)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 480 bytes in 1 blocks are still reachable in loss record 72 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000E3D00: _nc_read_termtype (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E3F52: _nc_read_file_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E409E: _nc_read_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB8BB: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 504 bytes in 21 blocks are still reachable in loss record 73 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000C84AE: _nc_add_to_try (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CEF78: _nc_init_keytry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D850F: _nc_keypad (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007F0: display_monitor_init (display_monitor.c:86)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 512 bytes in 1 blocks are still reachable in loss record 74 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000DAD43: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 552 bytes in 1 blocks are still reachable in loss record 76 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CE3A4: _nc_hash_map (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CE0F9: _nc_scroll_optimize (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E5746: doupdate (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D9A1F: wrefresh (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000A0D: draw_io_window (display_monitor.c:259)
+==8394==    by 0x10000095D: display_monitor_init (display_monitor.c:109)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 552 bytes in 1 blocks are still reachable in loss record 77 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CE3C8: _nc_hash_map (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CE0F9: _nc_scroll_optimize (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E5746: doupdate (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D9A1F: wrefresh (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000A0D: draw_io_window (display_monitor.c:259)
+==8394==    by 0x10000095D: display_monitor_init (display_monitor.c:109)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 680 bytes in 1 blocks are still reachable in loss record 79 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000E3B79: _nc_read_termtype (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E3F52: _nc_read_file_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E409E: _nc_read_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB8BB: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 1,104 bytes in 1 blocks are still reachable in loss record 80 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB16E: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 1,104 bytes in 1 blocks are still reachable in loss record 81 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB19A: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 1,104 bytes in 1 blocks are still reachable in loss record 82 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7F85: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB2EF: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 1,152 bytes in 12 blocks are still reachable in loss record 83 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x10000126B: display_monitor_update (display_monitor.c:349)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x10000226A: main (slc3.c:73)
+==8394== 
+==8394== 1,200 bytes in 50 blocks are still reachable in loss record 84 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000C8474: _nc_add_to_try (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CEF78: _nc_init_keytry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D850F: _nc_keypad (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007F0: display_monitor_init (display_monitor.c:86)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 1,408 bytes in 1 blocks are still reachable in loss record 85 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000DAD18: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 1,487 bytes in 1 blocks are still reachable in loss record 86 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000E3463: _nc_read_termtype (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E3F52: _nc_read_file_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E409E: _nc_read_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB8BB: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 1,536 bytes in 12 blocks are still reachable in loss record 87 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100001194: display_monitor_update (display_monitor.c:343)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x10000226A: main (slc3.c:73)
+==8394== 
+==8394== 1,680 bytes in 70 blocks are still reachable in loss record 88 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000C84AE: _nc_add_to_try (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CEEE2: _nc_init_keytry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D850F: _nc_keypad (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007F0: display_monitor_init (display_monitor.c:86)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 2,088 bytes in 87 blocks are still reachable in loss record 91 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000C8474: _nc_add_to_try (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CEEE2: _nc_init_keytry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D850F: _nc_keypad (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007F0: display_monitor_init (display_monitor.c:86)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 2,400 bytes in 12 blocks are still reachable in loss record 92 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100001194: display_monitor_update (display_monitor.c:343)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x10000226A: main (slc3.c:73)
+==8394== 
+==8394== 2,400 bytes in 12 blocks are still reachable in loss record 93 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000011FF: display_monitor_update (display_monitor.c:346)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x10000226A: main (slc3.c:73)
+==8394== 
+==8394== 2,400 bytes in 12 blocks are still reachable in loss record 94 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80B3: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x10000126B: display_monitor_update (display_monitor.c:349)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x10000226A: main (slc3.c:73)
+==8394== 
+==8394== 2,800 bytes in 1 blocks are still reachable in loss record 95 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000E4BC6: _nc_set_buffer (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DAE5F: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 3,072 bytes in 1 blocks are still reachable in loss record 97 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000E1081: _nc_init_wacs (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB0DC: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 3,072 bytes in 12 blocks are still reachable in loss record 98 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D80CF: _nc_makenew (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D829B: derwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000011FF: display_monitor_update (display_monitor.c:346)
+==8394==    by 0x100001CD8: display_monitor_loop (display_monitor.c:385)
+==8394==    by 0x10000226A: main (slc3.c:73)
+==8394== 
+==8394== 3,360 bytes in 1 blocks are still reachable in loss record 100 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CE2D3: _nc_hash_map (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000CE0F9: _nc_scroll_optimize (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E5746: doupdate (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D9A1F: wrefresh (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000A0D: draw_io_window (display_monitor.c:259)
+==8394==    by 0x10000095D: display_monitor_init (display_monitor.c:109)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 3,776 bytes in 1 blocks are still reachable in loss record 101 of 116
+==8394==    at 0x1000B9F7C: realloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000CDECF: _nc_doalloc (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E39AC: _nc_read_termtype (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E3F52: _nc_read_file_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000E409E: _nc_read_entry (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB8BB: _nc_setupterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7B55: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 4,096 bytes in 1 blocks are still reachable in loss record 102 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D2004: start_color (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C9: display_monitor_init (display_monitor.c:83)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 4,104 bytes in 1 blocks are still reachable in loss record 103 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x10000088E: display_monitor_init (display_monitor.c:100)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 4,104 bytes in 1 blocks are still reachable in loss record 104 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000008B5: display_monitor_init (display_monitor.c:101)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 7,591 bytes in 1 blocks are still reachable in loss record 106 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000E4B02: _nc_printf_string (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D91F4: vwprintw (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D9429: mvwprintw (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x10000188F: print_title (display_monitor.c:248)
+==8394==    by 0x100000A04: draw_io_window (display_monitor.c:258)
+==8394==    by 0x10000095D: display_monitor_init (display_monitor.c:109)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 8,400 bytes in 5 blocks are still reachable in loss record 107 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D7FD8: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000944: display_monitor_init (display_monitor.c:108)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 8,400 bytes in 5 blocks are still reachable in loss record 108 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D7FD8: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000976: display_monitor_init (display_monitor.c:110)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 8,640 bytes in 10 blocks are still reachable in loss record 109 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D7FD8: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x100000920: display_monitor_init (display_monitor.c:106)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 10,368 bytes in 12 blocks are still reachable in loss record 110 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D7FD8: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000008D9: display_monitor_init (display_monitor.c:104)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 14,400 bytes in 20 blocks are still reachable in loss record 111 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D7FD8: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000008FC: display_monitor_init (display_monitor.c:105)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 65,536 bytes in 1 blocks are still reachable in loss record 112 of 116
+==8394==    at 0x1000B95C6: malloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x10033E500: __smakebuf (in /usr/lib/system/libsystem_c.dylib)
+==8394==    by 0x100341C75: __srefill0 (in /usr/lib/system/libsystem_c.dylib)
+==8394==    by 0x100341D65: __srefill (in /usr/lib/system/libsystem_c.dylib)
+==8394==    by 0x10033B6F9: fgets (in /usr/lib/system/libsystem_c.dylib)
+==8394==    by 0x100002487: load_file_to_memory (slc3.c:779)
+==8394==    by 0x10000223E: main (slc3.c:63)
+==8394== 
+==8394== 131,068 bytes in 1 blocks are still reachable in loss record 113 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D1FDF: start_color (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C9: display_monitor_init (display_monitor.c:83)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 180,504 bytes in 69 blocks are still reachable in loss record 114 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D7FD8: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB16E: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 180,504 bytes in 69 blocks are still reachable in loss record 115 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D7FD8: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB19A: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== 180,504 bytes in 69 blocks are still reachable in loss record 116 of 116
+==8394==    at 0x1000B9C32: calloc (in /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==8394==    by 0x1000D7FD8: newwin (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000DB2EF: _nc_setupscreen (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D7BB9: newterm (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000D4BA7: initscr (in /usr/lib/libncurses.5.4.dylib)
+==8394==    by 0x1000007C0: display_monitor_init (display_monitor.c:82)
+==8394==    by 0x1000021C6: main (slc3.c:39)
+==8394== 
+==8394== LEAK SUMMARY:
+==8394==    definitely lost: 0 bytes in 0 blocks
+==8394==    indirectly lost: 0 bytes in 0 blocks
+==8394==      possibly lost: 72 bytes in 3 blocks
+==8394==    still reachable: 854,312 bytes in 616 blocks
+==8394==         suppressed: 18,590 bytes in 162 blocks
+==8394== 
+==8394== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 11 from 11)
+--8394-- 
+--8394-- used_suppression:      4 OSX1013:19-Leak /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp:924 suppressed: 8,768 bytes in 4 blocks
+--8394-- used_suppression:     25 OSX1013:10-Leak /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp:839 suppressed: 6,366 bytes in 100 blocks
+--8394-- used_suppression:      3 OSX1013:16-Leak /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp:897 suppressed: 3,200 bytes in 50 blocks
+--8394-- used_suppression:      1 OSX1013:18-Leak /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp:915 suppressed: 48 bytes in 1 blocks
+--8394-- used_suppression:      7 OSX1013:9-Leak /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp:829 suppressed: 208 bytes in 7 blocks
+--8394-- used_suppression:      1 OSX1013:dyld-5 /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp:1283
+--8394-- used_suppression:      2 OSX1013:dyld-4 /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp:1275
+--8394-- used_suppression:      1 OSX1013:dyld-3 /usr/local/Cellar/valgrind/HEAD-f1f543a/lib/valgrind/default.supp:1267
+==8394== 
+==8394== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 11 from 11)

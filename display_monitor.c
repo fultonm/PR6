@@ -1,8 +1,8 @@
 /* LC-3 Emulator
- * 
+ *
  * Date: May 2018
  *
- * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3 
+ * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3
  * machine based a finite state machine (FSM) interpretation of its operations.
  */
 
@@ -73,6 +73,10 @@ int c, i;
 char output_console[36];
 char output_console_ptr = 0;
 char display_mem_input[6];
+
+unsigned short ccN; // n bit for the cc
+unsigned short ccZ; // z bit for the cc
+unsigned short ccP; // p bit for the cc
 
 /** Initializes the debug monitor with variables needed throughout the execution of the
  * LC-3 simulator. */
@@ -277,12 +281,40 @@ void restore_menu_indicies()
     refresh();
 }
 
+/** Takes the cc from the CPU and parses the individual bits */
+unsigned short parseCC(CPU_p cpu)
+{
+    switch (cpu->cc) {
+    case 0:
+        ccN = 0;
+        ccZ = 0;
+        ccP = 0;
+        break;
+    case 1:
+        ccN = 0;
+        ccZ = 0;
+        ccP = 1;
+        break;
+    case 2:
+        ccN = 0;
+        ccZ = 1;
+        ccP = 0;
+        break;
+    case 4:
+        ccN = 1;
+        ccZ = 0;
+        ccP = 0;
+        break;
+    }
+}
+
 /** Updates the Ncurses window each time this function is called. The arrays containing
  *  menu data are all rebuilt, the menus are reinstantiated, positioned, and posted to the
  *  windows. */
 void display_monitor_update(CPU_p cpu)
 {
     display_monitor_free();
+    parseCC(cpu);
 
     for (i = 0; i < item_counts[REG]; ++i)
     {
@@ -314,8 +346,13 @@ void display_monitor_update(CPU_p cpu)
     sprintf(cpu_strings[4].description, "x%04X", cpu->mar);
     sprintf(cpu_strings[5].label, "MDR:");
     sprintf(cpu_strings[5].description, "x%04X", cpu->mdr);
-    sprintf(cpu_strings[6].label, "CC:");
-    sprintf(cpu_strings[6].description, "x%04X", cpu->cc);
+    sprintf(cpu_strings[6].label, "CC: N:");
+    sprintf(cpu_strings[6].description, "%d", ccN);
+    // TODO change ncurses display to fit new variables
+    sprintf(cpu_strings[6].label, " Z:");
+    sprintf(cpu_strings[6].description, "%d", ccZ);
+    sprintf(cpu_strings[6].label, " P:");
+    sprintf(cpu_strings[6].description, "%d", ccP);
 
     for (i = 0; i < 7; i++)
     {

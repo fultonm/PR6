@@ -3,3 +3,9 @@
 *.o
 *.DS_Store
 a.out.dSYM/
+
+*.valgrindout
+*.bin
+*.lst
+*.obj
+*.sym

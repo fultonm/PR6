@@ -1,8 +1,8 @@
 /* LC-3 Emulator
- * 
+ *
  * Date: May 2018
  *
- * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3 
+ * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3
  * machine based a finite state machine (FSM) interpretation of its operations.
  */
 
@@ -134,7 +134,9 @@ typedef struct CPU
 	unsigned short state;
 	unsigned short ir;  // instruction_register
 	unsigned short pc;  // program_counter
-	unsigned short cc;  // condition_code
+	unsigned short ccN;  // condition_code
+	unsigned short ccZ;
+	unsigned short ccP;
 	unsigned short mar; // memory_address_register
 	unsigned short mdr; // memory_data_register
 	unsigned short dr;  // destination_register
@@ -171,7 +173,7 @@ void handle_user_input(CPU_p cpu);
 void display_display_monitor(CPU_p cpu);
 void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer);
 short SEXT(unsigned short, int);
-unsigned short getCC(unsigned short);
+void setCC(unsigned short, CPU_p cpu);
 bool branchEnabled(unsigned short, CPU_p);
 
 // int binary_IR_contents_to_int16(int *binary_IR_helper_array, int *binary_IR_contents, int start, int length);

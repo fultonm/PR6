@@ -11,10 +11,12 @@
 #ifndef DISPLAY_MONITOR_H_
 #define DISPLAY_MONITOR_H_
 
-#define MONITOR_QUIT 0
-#define MONITOR_STEP 1
-#define MONITOR_LOAD 2
-#define MONITOR_NO_OP 3
+#define MONITOR_QUIT        0
+#define MONITOR_LOAD        1
+#define MONITOR_STEP        2
+#define MONITOR_RUN         3
+#define MONITOR_UPDATE      4
+#define MONITOR_NO_RETURN   5
 
 char load_file_input[80];
 

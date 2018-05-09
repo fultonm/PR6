@@ -14,7 +14,7 @@
 #include "display_monitor.h"
 
 FILE *open_file();
-bool isRun = false;
+bool is_run = false;
 
 /* 
  * Main method for the LC-3 Emulator. 
@@ -54,10 +54,9 @@ int main(int argc, char *argv[])
     {
         switch (monitor_return)
         {
-        case MONITOR_NO_OP:
-            /* A no-op is passed when the display monitor won't continue, for
-             * example when no file is loaded but the user selects step or run
-             * */
+        case MONITOR_UPDATE:
+            // printf("A no-op was passed... this shouldn't actually happen.");
+            /* Fall-through to update... */
             break;
 
         case MONITOR_LOAD:
@@ -65,11 +64,17 @@ int main(int argc, char *argv[])
             break;
 
         case MONITOR_STEP:
-            if (!isHalted)
+            if (!is_halted)
             {
                 controller(cpu);
             }
             break;
+        case MONITOR_RUN:
+            if (!is_halted) {
+                do {
+                    controller(cpu);
+                } while (!is_halted && !memory[cpu->pc]->breakpoint);
+            }
         }
         monitor_return = display_monitor_loop(cpu);
     }
@@ -77,6 +82,10 @@ int main(int argc, char *argv[])
     /* Memory cleanup. */
     display_monitor_destroy();
     free(cpu);
+    int i;
+    for (i = 0; i < NUM_OF_MEM_BANKS; i++) {
+        free(memory[i]);
+    }
 
     return 0;
 }
@@ -94,7 +103,9 @@ void lc3_init(CPU_p cpu)
     }
     for (i = 0; i < NUM_OF_MEM_BANKS; i++)
     {
-        memory[i] = 0;
+        memory[i] = calloc(1, sizeof(struct MEMORY));
+        memory[i]->data = 0;
+        memory[i]->breakpoint = false;
     }
     cpu->ir = 0;
     cpu->pc = 0;
@@ -118,7 +129,7 @@ void lc3_init(CPU_p cpu)
     nzp = 0; // fields for the IR
     offset = 0;
     immed = 0;
-    isHalted = false;
+    is_halted = false;
     vector = 0;
 }
 
@@ -153,7 +164,7 @@ void controller(CPU_p cpu)
             /* Corresponding to FSM microstates 18, 33, and 35. */
             cpu->mar = cpu->pc;          // Step 1: MAR is loaded with the contends of the PC,
             cpu->pc++;                   //         and also increment PC. Only done in the FETCH phase.
-            cpu->mdr = memory[cpu->mar]; // Step 2: Interrogate memory, resulting in the instruction placed into the MDR.
+            cpu->mdr = memory[cpu->mar]->data; // Step 2: Interrogate memory, resulting in the instruction placed into the MDR.
             cpu->ir = cpu->mdr;          // Step 3: Load the IR with the contents of the MDR.
             state = DECODE;              // Moving to next state.
             break;
@@ -175,7 +186,7 @@ void controller(CPU_p cpu)
                 offset = cpu->ir & MASK_PCOFFSET9;
                 offset = SEXT(offset, BIT_PCOFFSET9);
                 cpu->mar = cpu->pc + offset; // microstate 2.
-                cpu->mdr = memory[cpu->mar]; // microstate 25.
+                cpu->mdr = memory[cpu->mar]->data; // microstate 25.
                 break;
             case LDR:
                 dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
@@ -183,7 +194,7 @@ void controller(CPU_p cpu)
                 offset = cpu->ir & MASK_PCOFFSET6;
                 offset = SEXT(offset, BIT_PCOFFSET6);
                 cpu->mar = cpu->registers[sr1] + offset;
-                cpu->mdr = memory[cpu->mar];
+                cpu->mdr = memory[cpu->mar]->data;
                 break;
             case ST:
                 dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR; // This is actually a source register, but still use dr.
@@ -337,7 +348,7 @@ void controller(CPU_p cpu)
                 break;
             case ST:
             case STR:
-                memory[cpu->mar] = cpu->mdr; // Store into memory.
+                memory[cpu->mar]->data = cpu->mdr; // Store into memory.
                 break;
             case LEA:
                 cpu->registers[dr] = cpu->pc + offset;
@@ -354,7 +365,7 @@ void controller(CPU_p cpu)
 
     }  // end while (isCycleComplete)
 
-    if (isHalted)
+    if (is_halted)
     {
         cpu->pc = 0;
     }
@@ -432,7 +443,7 @@ void trap(unsigned short vector, CPU_p cpu)
     case TRAP_VECTOR_X25:
         /* Exit program state. */
         cpu->state = FETCH;
-        isHalted = 1;
+        is_halted = 1;
         break;
 
     case TRAP_VECTOR_X20:
@@ -738,7 +749,7 @@ void print_binary_form(unsigned value)
  */
 unsigned int translate_memory_address(unsigned int input_address)
 {
-    return input_address - 0x3000;
+    return input_address - starting_address;
 }
 
 /* 
@@ -766,7 +777,7 @@ FILE *open_file()
  */
 void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
 {
-    char line[64];
+    char line[8];
     fgets(line, sizeof(line), input_file_pointer);
 
     /* 
@@ -777,8 +788,8 @@ void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
 	 * IDEA: Create offset variable to hold difference between given start location and x3000?
 	 * This could be positive or negative value? Then compute from this value.
 	 */
-    unsigned short starting_address = strtol(line, NULL, 16);
-    starting_address = translate_memory_address(starting_address);
+    unsigned short first_address = strtol(line, NULL, 16);
+    starting_address = first_address;
 
     /* Read through file line by line and store to CPU memory. */
     unsigned short address;
@@ -786,7 +797,7 @@ void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
     int i = 0;
     while (fscanf(input_file_pointer, "%hx", &address) != EOF)
     {
-        memory[starting_address + i] = address;
+        memory[i]->data = address;
         i += 1;
     }
     file_loaded = 1;

@@ -55,6 +55,7 @@ int destroy_display_monitor();
 void print_message(const char *, char *);
 void clear_message();
 int update_display_monitor(CPU_p);
+void clear_line(int line);
 void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
 void print_window_titles();
@@ -74,7 +75,6 @@ ITEM **menu_list_items[3];
 int item_counts[3];
 int saved_menu_index[3];
 int active_window = MEM;
-
 int c, i;
 char output_console[36];
 char output_console_ptr = 0;

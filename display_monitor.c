@@ -178,8 +178,8 @@ void display_monitor_print_output(char ch)
 {
     if (ch != '\n')
     {
+        output_console[output_console_ptr] = ch;
         output_console[++output_console_ptr] = '\0';
-        output_console[output_console_ptr - 1] = ch;
         /** Position the message */
         attron(COLOR_PAIR(2));
         mvprintw(MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT * 2 + HEIGHT_PADDING, 6, "%s", output_console);

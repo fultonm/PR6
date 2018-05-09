@@ -319,7 +319,7 @@ void controller(CPU_p cpu)
             case JMP:
                 cpu->pc = cpu->registers[sr1];
                 break;
-            case BR:;
+            case BR:
                 offset = SEXT(offset, BIT_PCOFFSET9);
                 if (branchEnabled(nzp, cpu))
                 {
@@ -448,29 +448,19 @@ void trap(unsigned short vector, CPU_p cpu)
 
     case TRAP_VECTOR_X20:
         /* getch */
-
-        c = getc(stdin);
+        c = display_monitor_get_input();
+        cpu->registers[R0] = c;
         break;
 
     case TRAP_VECTOR_X21:
-        /* out (same as putc or simple prinf("%c");) */
-        putc(c, stdout);
+        display_monitor_print_output(cpu->registers[R0]);
         break;
 
     case TRAP_VECTOR_X22:
-        /* puts (simple printf without /n) */
-        for (int i = 0; i < cpu->registers[0]; i++)
-        {
-            if (i == '\0')
-            {
-                break;
-            }
-            else
-            {
-                display_monitor_print_output(i);
-            }
+        while (memory[cpu->registers[R0]] != '\0') {
+            display_monitor_print_output(memory[cpu->registers[R0]]);
+            cpu->registers[R0]++;
         }
-
         break;
     }
 }

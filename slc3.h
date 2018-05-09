@@ -12,6 +12,16 @@
 #ifndef LC3
 #define LC3
 
+/* Register Index Addresses */
+#define R0 0
+#define R1 1
+#define R2 2
+#define R3 3
+#define R4 4
+#define R5 5
+#define R6 6
+#define R7 7
+
 /* Machine Cycle States */
 #define FETCH 0
 #define DECODE 1
@@ -115,8 +125,9 @@ unsigned char file_loaded;
 
 unsigned int opcode, dr, sr1, sr2, bit5, bit11, state, nzp; // fields for the IR
 short offset, immed;
-bool isHalted;
+bool is_halted;
 unsigned short vector;
+unsigned short starting_address;
 
 typedef struct ALU
 {
@@ -124,6 +135,12 @@ typedef struct ALU
 	unsigned short b;	  // input.
 	unsigned short result; // result.
 } * ALU_p;
+
+typedef struct MEMORY
+{
+	unsigned short data;
+	bool breakpoint;
+} * MEM_p;
 
 /* CPU Struct */
 typedef struct CPU
@@ -160,7 +177,7 @@ typedef struct CPU
 } * CPU_p;
 
 /* Memory modules */
-unsigned short memory[NUM_OF_MEM_BANKS];
+MEM_p memory[NUM_OF_MEM_BANKS];
 
 /* Function Definitions */
 void controller(CPU_p cpu);

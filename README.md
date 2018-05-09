@@ -1,6 +1,6 @@
 # TCSS 372 Final Project 6
 
-Welcome to the LC-3 simulator!
+Welcome to the LC-3 simulator! <deleteThisChange>
 
 ## Getting Started
 

@@ -32,18 +32,21 @@
 
 #define HEIGHT_PADDING 2
 
-static const char MSG_LOAD[] = "1) Enter a program to load >> ";
-static const char MSG_LOADED[] = "1) Loaded %s";
-static const char MSG_STEP[] = "3) Stepped";
-static const char MSG_NO_FILE[] = "3) No file loaded yet!";
-static const char MSG_RUNNING_CODE[] = "4) Running code";
-static const char MSG_DISPLAY_MEM[] = "5) Enter the hex address to jump to >> ";
+static const char MSG_CPU_HALTED[] =        "CPU halted :*)";
+static const char MSG_LOAD[] =              "1) Enter a program to load >> ";
+static const char MSG_LOADED[] =            "1) Loaded %s";
+static const char MSG_STEP[] =              "3) Stepped";
+static const char MSG_STEP_NO_FILE[] =      "3) No file loaded yet!";
+static const char MSG_RUNNING_CODE[] =      "4) Running code";
+static const char MSG_RUN_NO_FILE[] =       "4) No file loaded yet!";
+static const char MSG_DISPLAY_MEM[] =       "5) Enter the hex address to jump to >> ";
 static const char MSG_EDIT_MEM_PROMPT_ADDR[] = "6) Enter the hex address to edit >> ";
 static const char MSG_EDIT_MEM_PROMPT_DATA[] = "6) Enter the hex data to push to %s >> ";
-static const char MSG_SET_UNSET_BRKPT[] = "8) Enter the hex address to set/unset breakpoint >> ";
-static const char MSG_CPU_HALTED_STEP[] = "3) Cannot step: CPU halted";
-static const char MSG_CPU_HALTED_RUN[] = "4) Cannot run: CPU halted";
-static const char MSG_CPU_HALTED[] = "4) CPU halted";
+static const char MSG_EDIT_MEM_NO_FILE[] =  "6) No file loaded yet!";
+static const char MSG_SET_UNSET_BRKPT[] =   "8) Enter the hex address to set/unset breakpoint >> ";
+static const char MSG_SET_UNSET_BRKPT_NO_FILE[] = "8) No file loaded yet!";
+static const char MSG_CPU_HALTED_STEP[] =   "3) Cannot step: CPU halted";
+static const char MSG_CPU_HALTED_RUN[] =    "4) Cannot run: CPU halted";
 
 typedef struct MenuString
 {
@@ -456,8 +459,8 @@ int display_monitor_loop(CPU_p cpu)
             /* User selected 3) to step through code */
             if (!file_loaded)
             {
-                print_message(MSG_NO_FILE, NULL);
-                monitor_return = MONITOR_UPDATE;
+                print_message(MSG_STEP_NO_FILE, NULL);
+                monitor_return = MONITOR_NO_RETURN;
             } else if (is_halted) {
                 print_message(MSG_CPU_HALTED_STEP, NULL);
                 monitor_return = MONITOR_NO_RETURN;
@@ -470,8 +473,8 @@ int display_monitor_loop(CPU_p cpu)
             /* User selected 4) to run code */
             if (!file_loaded)
             {
-                print_message(MSG_NO_FILE, NULL);
-                monitor_return = MONITOR_UPDATE;
+                print_message(MSG_RUN_NO_FILE, NULL);
+                monitor_return = MONITOR_NO_RETURN;
             } else if (is_halted) {
                 print_message(MSG_CPU_HALTED_RUN, NULL);
                 monitor_return = MONITOR_NO_RETURN;
@@ -494,6 +497,11 @@ int display_monitor_loop(CPU_p cpu)
             monitor_return = MONITOR_NO_RETURN;
             break;
         case 54:
+            if (!file_loaded)
+            {
+                print_message(MSG_EDIT_MEM_NO_FILE, NULL);
+                monitor_return = MONITOR_NO_RETURN;
+            }
             /* User selected 6) to edit a memory location */
             print_message(MSG_EDIT_MEM_PROMPT_ADDR, NULL);
             /** Move the cursor, turn on echo mode so the user can see their input
@@ -518,8 +526,8 @@ int display_monitor_loop(CPU_p cpu)
             /* User selected 8) to set/unset a breakpoint */
             if (!file_loaded)
             {
-                print_message(MSG_NO_FILE, NULL);
-                monitor_return = MONITOR_UPDATE;
+                print_message(MSG_SET_UNSET_BRKPT_NO_FILE, NULL);
+                monitor_return = MONITOR_NO_RETURN;
             }
             else 
             {

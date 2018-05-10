@@ -19,6 +19,7 @@
 #define MONITOR_NO_RETURN   5
 
 char load_file_input[80];
+bool has_breakpoint[NUM_OF_MEM_BANKS];
 
 int display_monitor_init(CPU_p);
 void display_monitor_update(CPU_p);

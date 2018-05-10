@@ -37,15 +37,6 @@ int main(int argc, char *argv[])
 
     /* Initialize and run the LC-3 from the debug monitor */
     display_monitor_init(cpu);
-    /*
-	char input_ch = display_monitor_get_input();
-	char input_ch2 = display_monitor_get_input();
-	char input_str[3];
-	input_str[0] = input_ch;
-	input_str[1] = input_ch2;
-	input_str[2] = '\0';
-	display_monitor_print_output(input_str[0]);
-	display_monitor_print_output(input_str[1]);*/
 
     int monitor_return = display_monitor_loop(cpu);
 
@@ -73,7 +64,7 @@ int main(int argc, char *argv[])
             if (!is_halted) {
                 do {
                     controller(cpu);
-                } while (!is_halted && !memory[cpu->pc]->breakpoint);
+                } while (!is_halted && !has_breakpoint[cpu->pc]);
             }
         }
         monitor_return = display_monitor_loop(cpu);
@@ -82,10 +73,6 @@ int main(int argc, char *argv[])
     /* Memory cleanup. */
     display_monitor_destroy();
     free(cpu);
-    int i;
-    for (i = 0; i < NUM_OF_MEM_BANKS; i++) {
-        free(memory[i]);
-    }
 
     return 0;
 }
@@ -103,9 +90,7 @@ void lc3_init(CPU_p cpu)
     }
     for (i = 0; i < NUM_OF_MEM_BANKS; i++)
     {
-        memory[i] = calloc(1, sizeof(struct MEMORY));
-        memory[i]->data = 0;
-        memory[i]->breakpoint = false;
+        memory[i] = 0;
     }
     cpu->ir = 0;
     cpu->pc = 0;
@@ -164,7 +149,7 @@ void controller(CPU_p cpu)
             /* Corresponding to FSM microstates 18, 33, and 35. */
             cpu->mar = cpu->pc;          // Step 1: MAR is loaded with the contends of the PC,
             cpu->pc++;                   //         and also increment PC. Only done in the FETCH phase.
-            cpu->mdr = memory[cpu->mar]->data; // Step 2: Interrogate memory, resulting in the instruction placed into the MDR.
+            cpu->mdr = memory[cpu->mar]; // Step 2: Interrogate memory, resulting in the instruction placed into the MDR.
             cpu->ir = cpu->mdr;          // Step 3: Load the IR with the contents of the MDR.
             state = DECODE;              // Moving to next state.
             break;
@@ -186,7 +171,7 @@ void controller(CPU_p cpu)
                 offset = cpu->ir & MASK_PCOFFSET9;
                 offset = SEXT(offset, BIT_PCOFFSET9);
                 cpu->mar = cpu->pc + offset; // microstate 2.
-                cpu->mdr = memory[cpu->mar]->data; // microstate 25.
+                cpu->mdr = memory[cpu->mar]; // microstate 25.
                 break;
             case LDR:
                 dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
@@ -194,7 +179,7 @@ void controller(CPU_p cpu)
                 offset = cpu->ir & MASK_PCOFFSET6;
                 offset = SEXT(offset, BIT_PCOFFSET6);
                 cpu->mar = cpu->registers[sr1] + offset;
-                cpu->mdr = memory[cpu->mar]->data;
+                cpu->mdr = memory[cpu->mar];
                 break;
             case ST:
                 dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR; // This is actually a source register, but still use dr.
@@ -348,7 +333,7 @@ void controller(CPU_p cpu)
                 break;
             case ST:
             case STR:
-                memory[cpu->mar]->data = cpu->mdr; // Store into memory.
+                memory[cpu->mar] = cpu->mdr; // Store into memory.
                 break;
             case LEA:
                 cpu->registers[dr] = cpu->pc + offset;
@@ -797,7 +782,7 @@ void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
     int i = 0;
     while (fscanf(input_file_pointer, "%hx", &address) != EOF)
     {
-        memory[i]->data = address;
+        memory[i] = address;
         i += 1;
     }
     file_loaded = 1;

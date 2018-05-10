@@ -190,6 +190,7 @@ void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer);
 short SEXT(unsigned short, int);
 unsigned short getCC(unsigned short);
 bool branchEnabled(unsigned short, CPU_p);
+FILE *open_file2(char *);
 
 // int binary_IR_contents_to_int16(int *binary_IR_helper_array, int *binary_IR_contents, int start, int length);
 // int get_destination_register(int *binary_IR_contents, int *binary_IR_helper_array);

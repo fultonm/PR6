@@ -35,6 +35,12 @@ int main(int argc, char *argv[])
         return 1;
     lc3_init(cpu);
 
+    // If there is an argument, attempt to used the first as a file name.
+    char *fileName = argv[1]; //char *fileName = "./hex/HW3.hex";
+    if(fileName != NULL) {
+        load_file_to_memory(cpu, open_file2(fileName));
+    }
+
     /* Initialize and run the LC-3 from the debug monitor */
     display_monitor_init(cpu);
     /*
@@ -771,6 +777,23 @@ FILE *open_file()
     }
     return input_file_pointer;
 }
+
+/*
+ * This function will allow the opening of files
+ */
+FILE *open_file2(char *theFileName)
+{
+    /* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to
+    return to main program of the menu. */
+    FILE *input_file_pointer;
+    input_file_pointer = fopen(theFileName, "r");
+    if (input_file_pointer == NULL)
+    {
+        // TODO Should display a message and re-prompt the user.
+    }
+    return input_file_pointer;
+}
+
 
 /*
  * This function allows for the loading of hex files into memory.

@@ -93,6 +93,10 @@ int display_monitor_init(CPU_p cpu)
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_CYAN, COLOR_BLACK);
 
+    for (i = 0; i < NUM_OF_MEM_BANKS; i++) {
+        has_breakpoint[i] = false;
+    }
+
     /* Stores the size of each array */
     item_counts[REG] = NUM_OF_REGISTERS;
     item_counts[MEM] = NUM_OF_MEM_BANKS;char display_mem_input[6];
@@ -310,13 +314,13 @@ void display_monitor_update(CPU_p cpu)
     {
         sprintf(mem_strings[i].label, "x%04X:", starting_address + i); /* So to start at x3000 */
         /* If this memory location has a breakpoint we will display a small square next to it. */
-        if (memory[i]->breakpoint)
+        if (has_breakpoint[i])
         {
-            sprintf(mem_strings[i].description, "x%04X [x]", memory[i]->data);
+            sprintf(mem_strings[i].description, "x%04X [x]", memory[i]);
         }
         else
         {
-            sprintf(mem_strings[i].description, "x%04X    ", memory[i]->data);
+            sprintf(mem_strings[i].description, "x%04X    ", memory[i]);
         }
         
         menu_list_items[MEM][i] = new_item(mem_strings[i].label, mem_strings[i].description);
@@ -424,7 +428,8 @@ int display_monitor_loop(CPU_p cpu)
         {
         case 9:
             /*　User pressed Tab to change active window */
-            active_window = ++active_window % 3;
+            active_window++;
+            active_window = active_window % 3;
             keypad(menu_windows[active_window], TRUE);
             print_window_titles();
             break;
@@ -450,7 +455,7 @@ int display_monitor_loop(CPU_p cpu)
                 monitor_return = MONITOR_UPDATE;
             } else if (is_halted) {
                 print_message(MSG_CPU_HALTED_STEP, NULL);
-                monitor_return = MONITOR_UPDATE;
+                monitor_return = MONITOR_NO_RETURN;
             } else {
                 print_message(MSG_STEP, NULL);
                 monitor_return = MONITOR_STEP;
@@ -464,7 +469,7 @@ int display_monitor_loop(CPU_p cpu)
                 monitor_return = MONITOR_UPDATE;
             } else if (is_halted) {
                 print_message(MSG_CPU_HALTED_RUN, NULL);
-                monitor_return = MONITOR_UPDATE;
+                monitor_return = MONITOR_NO_RETURN;
             } else {
                 print_message(MSG_RUNNING_CODE, NULL);
                 monitor_return = MONITOR_RUN;
@@ -500,7 +505,7 @@ int display_monitor_loop(CPU_p cpu)
                 getstr(mem_input);
                 noecho();
                 mem_index_addr = get_mem_address(mem_input);
-                memory[mem_index_addr]->breakpoint = !memory[mem_index_addr]->breakpoint;
+                has_breakpoint[mem_index_addr] = !has_breakpoint[mem_index_addr];
                 save_menu_indicies();
                 display_monitor_update(cpu);
                 restore_menu_indicies();

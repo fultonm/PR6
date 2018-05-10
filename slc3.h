@@ -136,12 +136,6 @@ typedef struct ALU
 	unsigned short result; // result.
 } * ALU_p;
 
-typedef struct MEMORY
-{
-	unsigned short data;
-	bool breakpoint;
-} * MEM_p;
-
 /* CPU Struct */
 typedef struct CPU
 {
@@ -175,7 +169,7 @@ typedef struct CPU
 } * CPU_p;
 
 /* Memory modules */
-MEM_p memory[NUM_OF_MEM_BANKS];
+unsigned short memory[NUM_OF_MEM_BANKS];
 
 /* Function Definitions */
 void controller(CPU_p cpu);

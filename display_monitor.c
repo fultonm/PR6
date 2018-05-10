@@ -25,14 +25,14 @@
 #define REG_PANEL_WIDTH 36
 #define REG_PANEL_HEIGHT 12
 #define MEM_PANEL_WIDTH 30
-#define MEM_PANEL_HEIGHT 20
+#define MEM_PANEL_HEIGHT 22
 #define CPU_PANEL_WIDTH 36
-#define CPU_PANEL_HEIGHT 10
+#define CPU_PANEL_HEIGHT 12
 #define IO_PANEL_HEIGHT 5
 
 #define HEIGHT_PADDING 2
 
-#define NUM_CPU_ELEMENTS 9
+#define NUM_CPU_ELEMENTS 10
 
 static const char MSG_LOAD[] = "1) Enter a program to load >> ";
 static const char MSG_LOADED[] = "1) Loaded %s";
@@ -338,19 +338,21 @@ void display_monitor_update(CPU_p cpu)
     sprintf(cpu_strings[4].description, "x%04X", cpu->mar);
     sprintf(cpu_strings[5].label, "MDR:");
     sprintf(cpu_strings[5].description, "x%04X", cpu->mdr);
-    sprintf(cpu_strings[6].label, "N:");
+    sprintf(cpu_strings[6].label, "CC N:");
     sprintf(cpu_strings[6].description, "%d", cpu->ccN);
-    // TODO change ncurses display to fit new variables
-    sprintf(cpu_strings[7].label, "Z:");
-    sprintf(cpu_strings[7].description, "%d", cpu->ccZ);
-    sprintf(cpu_strings[8].label, "P:");
-    sprintf(cpu_strings[8].description, "%d", cpu->ccP);
+    /* Inserting a blank one so the CC stuff looks better */
+    sprintf(cpu_strings[7].label, " ");
+    sprintf(cpu_strings[7].description, " ");
+    sprintf(cpu_strings[8].label, "CC Z:");
+    sprintf(cpu_strings[8].description, "%d", cpu->ccZ);
+    sprintf(cpu_strings[9].label, "CC P:");
+    sprintf(cpu_strings[9].description, "%d", cpu->ccP);
 
     for (i = 0; i < NUM_CPU_ELEMENTS; i++)
     {
         menu_list_items[CPU][i] = new_item(cpu_strings[i].label, cpu_strings[i].description);
     }
-    menu_list_items[CPU][NUM_CPU_ELEMENTS + 1] = new_item((char *)NULL, (char *)NULL);
+    menu_list_items[CPU][i] = new_item((char *)NULL, (char *)NULL);
 
     /* Create menu instances from the lists */
     for (i = 0; i < 3; i++)

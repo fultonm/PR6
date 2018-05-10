@@ -32,6 +32,8 @@
 
 #define HEIGHT_PADDING 2
 
+#define NUM_CPU_ELEMENTS 9
+
 static const char MSG_LOAD[] = "1) Enter a program to load >> ";
 static const char MSG_LOADED[] = "1) Loaded %s";
 static const char MSG_STEP[] = "3) Stepped";
@@ -66,7 +68,7 @@ unsigned int get_mem_address(char *);
  * value must also be present to signify the end of the array. */
 MenuString reg_strings[NUM_OF_REGISTERS + 1];
 MenuString mem_strings[NUM_OF_MEM_BANKS + 1];
-MenuString cpu_strings[7 + 1];
+MenuString cpu_strings[NUM_CPU_ELEMENTS + 1];
 
 WINDOW *menu_windows[3];
 WINDOW *input_window, *output_window;
@@ -96,7 +98,7 @@ int display_monitor_init(CPU_p cpu)
     /* Stores the size of each array */
     item_counts[REG] = NUM_OF_REGISTERS;
     item_counts[MEM] = NUM_OF_MEM_BANKS;char display_mem_input[6];
-    item_counts[CPU] = 8; /* 8 unless you add something else to display from the CPU */
+    item_counts[CPU] = NUM_CPU_ELEMENTS;
 
     saved_menu_index[REG] = 0;
     saved_menu_index[MEM] = 0;
@@ -104,12 +106,12 @@ int display_monitor_init(CPU_p cpu)
 
     menu_list_items[REG] = (ITEM **)calloc(item_counts[REG] + 1, sizeof(ITEM *));
     menu_list_items[MEM] = (ITEM **)calloc(item_counts[MEM] + 1, sizeof(ITEM *));
-    menu_list_items[CPU] = (ITEM **)calloc(item_counts[MEM] + 1, sizeof(ITEM *));
+    menu_list_items[CPU] = (ITEM **)calloc(item_counts[CPU] + 1, sizeof(ITEM *));
 
     /* Create the window instances to be associated with the menus */
     menu_windows[REG] = newwin(REG_PANEL_HEIGHT, REG_PANEL_WIDTH, HEIGHT_PADDING, 4);
     menu_windows[MEM] = newwin(MEM_PANEL_HEIGHT, MEM_PANEL_WIDTH, HEIGHT_PADDING, CPU_PANEL_WIDTH + 8);
-    menu_windows[CPU] = newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + 2, 4);
+    menu_windows[CPU] = newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + HEIGHT_PADDING, 4);
 
     input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4, MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(input_window, "Input");
@@ -336,19 +338,19 @@ void display_monitor_update(CPU_p cpu)
     sprintf(cpu_strings[4].description, "x%04X", cpu->mar);
     sprintf(cpu_strings[5].label, "MDR:");
     sprintf(cpu_strings[5].description, "x%04X", cpu->mdr);
-    sprintf(cpu_strings[6].label, "CC: N:");
+    sprintf(cpu_strings[6].label, "N:");
     sprintf(cpu_strings[6].description, "%d", cpu->ccN);
     // TODO change ncurses display to fit new variables
-    sprintf(cpu_strings[6].label, " Z:");
-    sprintf(cpu_strings[6].description, "%d", cpu->ccZ);
-    sprintf(cpu_strings[6].label, " P:");
-    sprintf(cpu_strings[6].description, "%d", cpu->ccP);
+    sprintf(cpu_strings[7].label, "Z:");
+    sprintf(cpu_strings[7].description, "%d", cpu->ccZ);
+    sprintf(cpu_strings[8].label, "P:");
+    sprintf(cpu_strings[8].description, "%d", cpu->ccP);
 
-    for (i = 0; i < 7; i++)
+    for (i = 0; i < NUM_CPU_ELEMENTS; i++)
     {
         menu_list_items[CPU][i] = new_item(cpu_strings[i].label, cpu_strings[i].description);
     }
-    menu_list_items[CPU][7] = new_item((char *)NULL, (char *)NULL);
+    menu_list_items[CPU][NUM_CPU_ELEMENTS + 1] = new_item((char *)NULL, (char *)NULL);
 
     /* Create menu instances from the lists */
     for (i = 0; i < 3; i++)

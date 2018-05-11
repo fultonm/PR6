@@ -1,8 +1,8 @@
 /* LC-3 Emulator
- * 
+ *
  * Date: May 2018
  *
- * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3 
+ * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3
  * machine based a finite state machine (FSM) interpretation of its operations.
  */
 
@@ -16,10 +16,10 @@
 FILE *open_file();
 bool is_run = false;
 
-/* 
- * Main method for the LC-3 Emulator. 
- * 
- * The command line argument passed in is what will be populated into 
+/*
+ * Main method for the LC-3 Emulator.
+ *
+ * The command line argument passed in is what will be populated into
  * the LC-3's memory at runtime. For example, if the program is run with
  * input "0x1694", that hexadecimal value will be stored into the instruction register (IR)
  * and can be thought of in binary as 0001 0110 1001 0100, which (based on the
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-/* 
+/*
  * This method initializes a passed in CPU object (technically a pointer to one)
  * by setting all of it's regsiter/state/memory values to zero.
  */
@@ -102,7 +102,9 @@ void lc3_init(CPU_p cpu)
     cpu->pc = 0;
     cpu->mdr = 0;
     cpu->mar = 0;
-    cpu->cc = 0;
+    cpu->ccN = 0;
+    cpu->ccZ = 0;
+    cpu->ccP = 0;
     cpu->state = 0;
     cpu->alu_a = 0;
     cpu->alu_b = 0;
@@ -124,8 +126,8 @@ void lc3_init(CPU_p cpu)
     vector = 0;
 }
 
-/* 
- * The controller method of the LC-3. This contains much of the complete instruction 
+/*
+ * The controller method of the LC-3. This contains much of the complete instruction
  * cycle of the LC-3.
  */
 void controller(CPU_p cpu)
@@ -285,7 +287,7 @@ void controller(CPU_p cpu)
                 {
                     cpu->mdr = cpu->registers[sr1] + immed;
                 }
-                cpu->cc = getCC(cpu->mdr); // TODO should this be set in this phase?
+                setCC(cpu->mdr, cpu); // TODO should this be set in this phase?
                 break;
             case AND:
                 if (bit5 == 0)
@@ -296,11 +298,11 @@ void controller(CPU_p cpu)
                 {
                     cpu->mdr = cpu->registers[sr1] & immed;
                 }
-                cpu->cc = getCC(cpu->mdr); // TODO should this be set in this phase?
+                setCC(cpu->mdr, cpu); // TODO should this be set in this phase?
                 break;
             case NOT:
                 cpu->mdr = ~cpu->registers[sr1]; // Interpret as a negative if the leading bit is a 1.
-                cpu->cc = getCC(cpu->mdr);       // TODO should this be set in this phase?
+                setCC(cpu->mdr, cpu);       // TODO should this be set in this phase?
                 break;
             case TRAP:
                 // Book page 222.
@@ -335,7 +337,7 @@ void controller(CPU_p cpu)
             case LD:
             case LDR:
                 cpu->registers[dr] = cpu->mdr; // Load into the register.
-                cpu->cc = getCC(cpu->registers[dr]);
+                setCC(cpu->registers[dr], cpu);
                 break;
             case ST:
             case STR:
@@ -343,7 +345,7 @@ void controller(CPU_p cpu)
                 break;
             case LEA:
                 cpu->registers[dr] = cpu->pc + offset;
-                cpu->cc = getCC(cpu->registers[dr]);
+                setCC(cpu->registers[dr], cpu);
                 break;
                 // do any clean up here in prep for the next complete cycle
                 isCycleComplete = true;
@@ -391,7 +393,7 @@ void int16_to_binary_IR_contents(int *binary_IR_contents, unsigned short input_n
 }
 
 /*
- * This function receives a binary integer array, a target binary array, 
+ * This function receives a binary integer array, a target binary array,
  * a start bit, and a length bit. With this information, the function
  * finds and returns an integer representation of a 16-bit binary subarray of
  * a given binary array based on a given start bit and bit length.
@@ -460,7 +462,7 @@ void trap(unsigned short vector, CPU_p cpu)
 * This function will take the loaction of the high order bit of the immediate value
 * and sign extend it so that if the high order bit is a 1, then it will be converted to
 * negative value.
-* 
+*
 * @param value is the number to be sign extended.
 * @param instance determines what the high order bit is of the value.
 */
@@ -492,17 +494,27 @@ short SEXT(unsigned short theValue, int highOrderBit)
 /**
 * This function will determine the condition code based on the value passed
 */
-unsigned short getCC(unsigned short value)
+void setCC(unsigned short value, CPU_p cpu)
 {
     short signedValue = value;
-    unsigned short code;
     if (signedValue < 0)
-        code = CONDITION_N;
+    {
+        cpu->ccN = 1;
+        cpu->ccZ = 0;
+        cpu->ccP = 0;
+    }
     else if (signedValue == 0)
-        code = CONDITION_Z;
+    {
+        cpu->ccN = 0;
+        cpu->ccZ = 1;
+        cpu->ccP = 0;
+    }
     else
-        code = CONDITION_P;
-    return code;
+    {
+        cpu->ccN = 0;
+        cpu->ccZ = 0;
+        cpu->ccP = 1;
+    }
 }
 
 /**
@@ -519,27 +531,27 @@ bool branchEnabled(unsigned short nzp, CPU_p cpu)
         result = true;
         break;
     case CONDITION_NP:
-        if (cpu->cc == CONDITION_N || cpu->cc == CONDITION_P)
+        if (cpu->ccN || cpu->ccP)
             result = true;
         break;
     case CONDITION_NZ:
-        if (cpu->cc == CONDITION_N || cpu->cc == CONDITION_Z)
+        if (cpu->ccN || cpu->ccZ)
             result = true;
         break;
     case CONDITION_ZP:
-        if (cpu->cc == CONDITION_Z || cpu->cc == CONDITION_P)
+        if (cpu->ccZ || cpu->ccP)
             result = true;
         break;
     case CONDITION_N:
-        if (cpu->cc == CONDITION_N)
+        if (cpu->ccN)
             result = true;
         break;
     case CONDITION_Z:
-        if (cpu->cc == CONDITION_Z)
+        if (cpu->ccZ)
             result = true;
         break;
     case CONDITION_P:
-        if (cpu->cc == CONDITION_P)
+        if (cpu->ccP)
             result = true;
         break;
     }
@@ -553,20 +565,26 @@ void set_condition_code(int input_number, CPU_p cpu)
 {
     if (input_number > 0)
     {
-        cpu->cc = 1; /* P */
+        cpu->ccN = 0;
+        cpu->ccZ = 0;
+        cpu->ccP = 1; /* P */
     }
     else if (input_number < 0)
     {
-        cpu->cc = 4; /* N */
+        cpu->ccN = 1; /* N */
+        cpu->ccZ = 0;
+        cpu->ccP = 0;
     }
     else
     {
-        cpu->cc = 2; /* Z */
+        cpu->ccN = 0;
+        cpu->ccZ = 1; /* Z */
+        cpu->ccP = 0;
     }
 }
 
 /*
- * This function finds and returns the integer value of the opcode 
+ * This function finds and returns the integer value of the opcode
  * based on input memory.
  */
 int get_opcode(int *binary_IR_contents, int *binary_IR_helper_array)
@@ -626,7 +644,7 @@ int get_pcoffset9(int *binary_IR_contents, int *binary_IR_helper_array)
 }
 
 /*
- * This function finds and returns the immediate mode for 
+ * This function finds and returns the immediate mode for
  * the AND and ADD instructions based on the contents of the instruction register (IR).
  */
 int get_immediate_mode(int *binary_IR_contents, int *binary_IR_helper_array)
@@ -638,7 +656,7 @@ int get_immediate_mode(int *binary_IR_contents, int *binary_IR_helper_array)
 }
 
 /*
- * This function finds and returns the immediate mode for 
+ * This function finds and returns the immediate mode for
  * the JSR and the JSRR instructions based on the contents of the instruction register (IR).
  */
 int get_jsr_immediate_mode(int *binary_IR_contents, int *binary_IR_helper_array)
@@ -661,7 +679,7 @@ int get_immediate_value(int *binary_IR_contents, int *binary_IR_helper_array)
     return immediate_value;
 }
 
-/* 
+/*
  * This function finds and returns the immediate value for
  * the JSR and JSRR instructions based on the contents of the instruction register (IR).
  */
@@ -674,7 +692,7 @@ int get_jsr_immediate_value(int *binary_IR_contents, int *binary_IR_helper_array
 }
 
 /*
- * This function determines and returns a 1 or 0 to represent if a branch 
+ * This function determines and returns a 1 or 0 to represent if a branch
  * should be taken or not.
  */
 int get_branch_enabled(int *binary_IR_contents, int *binary_IR_helper_array, CPU_p cpu)
@@ -684,14 +702,13 @@ int get_branch_enabled(int *binary_IR_contents, int *binary_IR_helper_array, CPU
 
     /* Convert the condition code to an integer array for bit comparison. */
     int *condition_code = (int *)malloc(sizeof(int) * 3);
-    int input_number = cpu->cc, i;
+    int i;
     int temp_array[3];
 
-    for (i = 0; i < 3; i++)
-    {
-        temp_array[i] = input_number % 2;
-        input_number = input_number / 2;
-    }
+    temp_array[0] = cpu->ccN;
+    temp_array[1] = cpu->ccZ;
+    temp_array[2] = cpu->ccP;
+
     for (i = 0; i < 3; i++)
     {
         condition_code[2 - i] = temp_array[i];
@@ -723,7 +740,7 @@ int get_trap_vector(int *binary_IR_contents, int *binary_IR_helper_array)
     return binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 8, 8);
 }
 
-/* 
+/*
  * This function prints a binary representation of a given unsigned integer value to the screen.
  */
 void print_binary_form(unsigned value)
@@ -735,7 +752,7 @@ void print_binary_form(unsigned value)
 }
 
 /*
- * This function will translate a given LC-3 user space memory address (which begins at 0x3000) into 
+ * This function will translate a given LC-3 user space memory address (which begins at 0x3000) into
  * a regular memory address (which begins at 0x0).
  */
 unsigned int translate_memory_address(unsigned int input_address)
@@ -743,18 +760,18 @@ unsigned int translate_memory_address(unsigned int input_address)
     return input_address - starting_address;
 }
 
-/* 
+/*
  * This function will allow the opening of files
  */
 FILE *open_file()
 {
-    /* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to 
+    /* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to
 	return to main program of the menu. */
     FILE *input_file_pointer;
     input_file_pointer = fopen(load_file_input, "r");
     if (input_file_pointer == NULL)
     {
-        /* 
+        /*
 		 * Error checking is hard to do with this file structure... How can we get an
 		 * error message back to the display_monitor? We would want an error message to
 		 * appear right under the user selection options.
@@ -788,11 +805,11 @@ void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
     char line[8];
     fgets(line, sizeof(line), input_file_pointer);
 
-    /* 
+    /*
 	 * Subtract 0x3000 from first hex value in file to be starting memory location
 	 * Note: This requires the first line of the hex file to not be less than x3000 since
-	 * this is an unsigned short. 
-	 * 
+	 * this is an unsigned short.
+	 *
 	 * IDEA: Create offset variable to hold difference between given start location and x3000?
 	 * This could be positive or negative value? Then compute from this value.
 	 */

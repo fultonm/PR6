@@ -29,21 +29,25 @@
 #define CPU_PANEL_WIDTH 36
 #define CPU_PANEL_HEIGHT 12
 #define IO_PANEL_HEIGHT 5
-
 #define HEIGHT_PADDING 2
 
 #define NUM_CPU_ELEMENTS 10
 
-static const char MSG_LOAD[] = "1) Enter a program to load >> ";
-static const char MSG_LOADED[] = "1) Loaded %s";
-static const char MSG_STEP[] = "3) Stepped";
-static const char MSG_NO_FILE[] = "3) No file loaded yet!";
-static const char MSG_RUNNING_CODE[] = "4) Running code";
-static const char MSG_DISPLAY_MEM[] = "5) Enter the four digit hex address to jump to >> ";
-static const char MSG_SET_UNSET_BRKPT[] = "8) Enter the address to set/unset as a breakpoint >> ";
-static const char MSG_CPU_HALTED_STEP[] = "3) Cannot step: CPU halted";
-static const char MSG_CPU_HALTED_RUN[] = "4) Cannot run: CPU halted";
-static const char MSG_CPU_HALTED[] = "4) CPU halted";
+static const char MSG_CPU_HALTED[] =        "CPU halted :*)";
+static const char MSG_LOAD[] =              "1) Enter a program to load >> ";
+static const char MSG_LOADED[] =            "1) Loaded %s";
+static const char MSG_STEP[] =              "3) Stepped";
+static const char MSG_STEP_NO_FILE[] =      "3) No file loaded yet!";
+static const char MSG_RUNNING_CODE[] =      "4) Running code";
+static const char MSG_RUN_NO_FILE[] =       "4) No file loaded yet!";
+static const char MSG_DISPLAY_MEM[] =       "5) Enter the hex address to jump to >> ";
+static const char MSG_EDIT_MEM_PROMPT_ADDR[] = "6) Enter the hex address to edit >> ";
+static const char MSG_EDIT_MEM_PROMPT_DATA[] = "6) Enter the hex data to push to %s >> ";
+static const char MSG_EDIT_MEM_NO_FILE[] =  "6) No file loaded yet!";
+static const char MSG_SET_UNSET_BRKPT[] =   "8) Enter the hex address to set/unset breakpoint >> ";
+static const char MSG_SET_UNSET_BRKPT_NO_FILE[] = "8) No file loaded yet!";
+static const char MSG_CPU_HALTED_STEP[] =   "3) Cannot step: CPU halted";
+static const char MSG_CPU_HALTED_RUN[] =    "4) Cannot run: CPU halted";
 
 typedef struct MenuString
 {
@@ -62,6 +66,7 @@ void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
 void print_window_titles();
 unsigned int get_mem_address(char *);
+unsigned int get_mem_data(char *);
 
 /** Ensure these are at least as big (or equal to) the actual vaues in the CPU. These have
  * +1 because in addition to the actual string representing data in the LC-3, a null
@@ -402,7 +407,7 @@ void display_monitor_update(CPU_p cpu)
     /* Print labels on the window */
     attron(COLOR_PAIR(2));
     mvprintw(0, 4, "Welcome to the LC-3 Simulator Simulator!");
-    mvprintw(MEM_PANEL_HEIGHT + 2, 4, "1) Load, 3) Step, 4) Run, 5) Show Mem, 8) Set Brkpt 9) Exit");
+    mvprintw(MEM_PANEL_HEIGHT + 2, 4, "1) Load, 3) Step, 4) Run, 5) Show Mem, 6) Edit 8) Set Brkpt 9) Exit");
     mvprintw(LINES - 2, 0, "Use Tab (\\t) to switch active panels");
     mvprintw(LINES - 1, 0, "Arrow Keys to navigate (9 to Exit)");
     attroff(COLOR_PAIR(2));
@@ -419,8 +424,10 @@ int display_monitor_loop(CPU_p cpu)
     display_monitor_update(cpu);
     
     /* Input array used for 5) Show Mem, 8) Set/Unset breakpoint */
-    char mem_input[6];
-    unsigned short mem_index_addr;
+    char mem_addr_input[6];
+    char mem_data_input[6];
+    unsigned short mem_addr_index;
+    unsigned short mem_data;
 
     /** This variable is used to return information about the user's selection back to the
      *  LC-3 */
@@ -460,8 +467,8 @@ int display_monitor_loop(CPU_p cpu)
             /* User selected 3) to step through code */
             if (!file_loaded)
             {
-                print_message(MSG_NO_FILE, NULL);
-                monitor_return = MONITOR_UPDATE;
+                print_message(MSG_STEP_NO_FILE, NULL);
+                monitor_return = MONITOR_NO_RETURN;
             } else if (is_halted) {
                 print_message(MSG_CPU_HALTED_STEP, NULL);
                 monitor_return = MONITOR_NO_RETURN;
@@ -474,8 +481,8 @@ int display_monitor_loop(CPU_p cpu)
             /* User selected 4) to run code */
             if (!file_loaded)
             {
-                print_message(MSG_NO_FILE, NULL);
-                monitor_return = MONITOR_UPDATE;
+                print_message(MSG_RUN_NO_FILE, NULL);
+                monitor_return = MONITOR_NO_RETURN;
             } else if (is_halted) {
                 print_message(MSG_CPU_HALTED_RUN, NULL);
                 monitor_return = MONITOR_NO_RETURN;
@@ -491,18 +498,44 @@ int display_monitor_loop(CPU_p cpu)
              *  then turn it back on after capturing file name input */
             move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_DISPLAY_MEM) + 4);
             echo();
-            getstr(mem_input);
+            getstr(mem_addr_input);
             noecho();
-            mem_index_addr = get_mem_address(mem_input);
-            set_current_item(menus[MEM], menu_list_items[MEM][mem_index_addr]);     
+            mem_addr_index = get_mem_address(mem_addr_input);
+            set_current_item(menus[MEM], menu_list_items[MEM][mem_addr_index]);     
             monitor_return = MONITOR_NO_RETURN;
             break;
+        case 54:
+            if (!file_loaded)
+            {
+                print_message(MSG_EDIT_MEM_NO_FILE, NULL);
+                monitor_return = MONITOR_NO_RETURN;
+            }
+            /* User selected 6) to edit a memory location */
+            print_message(MSG_EDIT_MEM_PROMPT_ADDR, NULL);
+            /** Move the cursor, turn on echo mode so the user can see their input
+             *  then turn it back on after capturing address */
+            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_PROMPT_ADDR) + 4);
+            echo();
+            getstr(mem_addr_input);
+            noecho();
+            mem_addr_index = get_mem_address(mem_addr_input);
+            print_message(MSG_EDIT_MEM_PROMPT_DATA, mem_addr_input);
+            /** Move the cursor, turn on echo mode so the user can see their input
+             *  then turn it back on after capturing the data */
+            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_PROMPT_DATA) + strlen(mem_addr_input) + 4);
+            echo();
+            getstr(mem_data_input);
+            noecho();
+            mem_data = get_mem_data(mem_data_input);
+            memory[mem_addr_index] = mem_data;
+            monitor_return = MONITOR_UPDATE;
+            break;            
         case 56:
             /* User selected 8) to set/unset a breakpoint */
             if (!file_loaded)
             {
-                print_message(MSG_NO_FILE, NULL);
-                monitor_return = MONITOR_UPDATE;
+                print_message(MSG_SET_UNSET_BRKPT_NO_FILE, NULL);
+                monitor_return = MONITOR_NO_RETURN;
             }
             else 
             {
@@ -511,10 +544,10 @@ int display_monitor_loop(CPU_p cpu)
                  *  then turn it back on after capturing file name input */
                 move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_SET_UNSET_BRKPT) + 4);
                 echo();
-                getstr(mem_input);
+                getstr(mem_addr_input);
                 noecho();
-                mem_index_addr = get_mem_address(mem_input);
-                has_breakpoint[mem_index_addr] = !has_breakpoint[mem_index_addr];
+                mem_addr_index = get_mem_address(mem_addr_input);
+                has_breakpoint[mem_addr_index] = !has_breakpoint[mem_addr_index];
                 save_menu_indicies();
                 display_monitor_update(cpu);
                 restore_menu_indicies();
@@ -571,4 +604,10 @@ unsigned int get_mem_address(char *mem_string) {
      * 3002 + strlen("3002") - 4 = 3002 */
     unsigned short address = strtol(mem_string + strlen(mem_string) - 4, NULL, 16);
     return translate_memory_address(address);
+}
+
+unsigned int get_mem_data(char *mem_string) {
+    /* x3002 + strlen("x3002") - 4 = 3002
+     * 3002 + strlen("3002") - 4 = 3002 */
+    return strtol(mem_string + strlen(mem_string) - 4, NULL, 16);
 }

@@ -430,7 +430,6 @@ int binary_IR_contents_to_int16(int *binary_IR_helper_array, int *binary_IR_cont
 void trap(unsigned short vector, CPU_p cpu)
 {
     char c;
-    bool first_trap_22_char = true;
 
     switch (vector)
     {

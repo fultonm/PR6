@@ -15,42 +15,42 @@
 #include "slc3.h"
 #include "display_monitor.h"
 
-#define REG 0
-#define MEM 1
-#define CPU 2
+#define REG                     0
+#define MEM                     1
+#define CPU                     2
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
-#define CTRLD 4
+#define CTRLD                   4
 
-#define REG_PANEL_WIDTH 36
-#define REG_PANEL_HEIGHT 12
-#define MEM_PANEL_WIDTH 30
-#define MEM_PANEL_HEIGHT 22
-#define CPU_PANEL_WIDTH 36
-#define CPU_PANEL_HEIGHT 12
-#define IO_PANEL_HEIGHT 5
-#define HEIGHT_PADDING 2
+#define REG_PANEL_WIDTH         36
+#define REG_PANEL_HEIGHT        12
+#define MEM_PANEL_WIDTH         30
+#define MEM_PANEL_HEIGHT        22
+#define CPU_PANEL_WIDTH         36
+#define CPU_PANEL_HEIGHT        12
+#define IO_PANEL_HEIGHT         5
+#define HEIGHT_PADDING          2
 
-#define OUTPUT_CONSOLE_LINES 3
-#define OUTPUT_CONSOLE_COLS 64
+#define OUTPUT_CONSOLE_LINES    3
+#define OUTPUT_CONSOLE_COLS     64
 
 #define NUM_CPU_ELEMENTS 10
 
-static const char MSG_CPU_HALTED[] = "CPU halted :*)";
-static const char MSG_LOAD[] = "1) Enter a program to load >> ";
-static const char MSG_LOADED[] = "1) Loaded %s";
-static const char MSG_STEP[] = "3) Stepped";
-static const char MSG_STEP_NO_FILE[] = "3) No file loaded yet!";
-static const char MSG_RUNNING_CODE[] = "4) Running code";
-static const char MSG_RUN_NO_FILE[] = "4) No file loaded yet!";
-static const char MSG_DISPLAY_MEM[] = "5) Enter the hex address to jump to >> ";
+static const char MSG_CPU_HALTED[] =        "CPU halted :*)";
+static const char MSG_LOAD[] =              "1) Enter a program to load >> ";
+static const char MSG_LOADED[] =            "1) Loaded %s";
+static const char MSG_STEP[] =              "3) Stepped";
+static const char MSG_STEP_NO_FILE[] =      "3) No file loaded yet!";
+static const char MSG_RUNNING_CODE[] =      "4) Running code";
+static const char MSG_RUN_NO_FILE[] =       "4) No file loaded yet!";
+static const char MSG_DISPLAY_MEM[] =       "5) Enter the hex address to jump to >> ";
 static const char MSG_EDIT_MEM_PROMPT_ADDR[] = "6) Enter the hex address to edit >> ";
 static const char MSG_EDIT_MEM_PROMPT_DATA[] = "6) Enter the hex data to push to %s >> ";
-static const char MSG_EDIT_MEM_NO_FILE[] = "6) No file loaded yet!";
-static const char MSG_SET_UNSET_BRKPT[] = "8) Enter the hex address to set/unset breakpoint >> ";
+static const char MSG_EDIT_MEM_NO_FILE[] =  "6) No file loaded yet!";
+static const char MSG_SET_UNSET_BRKPT[] =   "8) Enter the hex address to set/unset breakpoint >> ";
 static const char MSG_SET_UNSET_BRKPT_NO_FILE[] = "8) No file loaded yet!";
-static const char MSG_CPU_HALTED_STEP[] = "3) Cannot step: CPU halted";
-static const char MSG_CPU_HALTED_RUN[] = "4) Cannot run: CPU halted";
+static const char MSG_CPU_HALTED_STEP[] =   "3) Cannot step: CPU halted";
+static const char MSG_CPU_HALTED_RUN[] =    "4) Cannot run: CPU halted";
 
 typedef struct MenuString
 {

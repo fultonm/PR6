@@ -430,6 +430,7 @@ int binary_IR_contents_to_int16(int *binary_IR_helper_array, int *binary_IR_cont
 void trap(unsigned short vector, CPU_p cpu)
 {
     char c;
+    bool first_trap_22_char = true;
 
     switch (vector)
     {
@@ -450,8 +451,10 @@ void trap(unsigned short vector, CPU_p cpu)
         break;
 
     case TRAP_VECTOR_X22:
-        while (memory[cpu->registers[R0]] != '\0') {
+         for (;;) {
             display_monitor_print_output(memory[cpu->registers[R0]]);
+            if (memory[cpu->registers[R0]] == '\0')
+                break;
             cpu->registers[R0]++;
         }
         break;

@@ -15,21 +15,24 @@
 #include "slc3.h"
 #include "display_monitor.h"
 
-#define REG 0
-#define MEM 1
-#define CPU 2
+#define REG                     0
+#define MEM                     1
+#define CPU                     2
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
-#define CTRLD 4
+#define CTRLD                   4
 
-#define REG_PANEL_WIDTH 36
-#define REG_PANEL_HEIGHT 12
-#define MEM_PANEL_WIDTH 30
-#define MEM_PANEL_HEIGHT 22
-#define CPU_PANEL_WIDTH 36
-#define CPU_PANEL_HEIGHT 12
-#define IO_PANEL_HEIGHT 5
-#define HEIGHT_PADDING 2
+#define REG_PANEL_WIDTH         36
+#define REG_PANEL_HEIGHT        12
+#define MEM_PANEL_WIDTH         30
+#define MEM_PANEL_HEIGHT        22
+#define CPU_PANEL_WIDTH         36
+#define CPU_PANEL_HEIGHT        12
+#define IO_PANEL_HEIGHT         5
+#define HEIGHT_PADDING          2
+
+#define OUTPUT_CONSOLE_LINES    3
+#define OUTPUT_CONSOLE_COLS     64
 
 #define NUM_CPU_ELEMENTS 10
 
@@ -83,9 +86,10 @@ int item_counts[3];
 int saved_menu_index[3];
 int active_window = MEM;
 int c, i;
-char output_console[36];
-char output_console_ptr = 0;
 
+char console_content[OUTPUT_CONSOLE_LINES][OUTPUT_CONSOLE_COLS];
+unsigned char console_line_ptr = 0;
+unsigned char console_col_ptr = 0;
 
 /** Initializes the debug monitor with variables needed throughout the execution of the
  * LC-3 simulator. */
@@ -99,14 +103,17 @@ int display_monitor_init(CPU_p cpu)
     keypad(stdscr, TRUE);
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_CYAN, COLOR_BLACK);
+    init_pair(3, COLOR_YELLOW, COLOR_BLACK);
 
-    for (i = 0; i < NUM_OF_MEM_BANKS; i++) {
+    for (i = 0; i < NUM_OF_MEM_BANKS; i++)
+    {
         has_breakpoint[i] = false;
     }
 
     /* Stores the size of each array */
     item_counts[REG] = NUM_OF_REGISTERS;
-    item_counts[MEM] = NUM_OF_MEM_BANKS;char display_mem_input[6];
+    item_counts[MEM] = NUM_OF_MEM_BANKS;
+    char display_mem_input[6];
     item_counts[CPU] = NUM_CPU_ELEMENTS;
 
     saved_menu_index[REG] = 0;
@@ -124,8 +131,13 @@ int display_monitor_init(CPU_p cpu)
 
     input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4, MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(input_window, "Input");
-    output_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4, MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
+    output_window = newwin(IO_PANEL_HEIGHT + OUTPUT_CONSOLE_LINES - 1, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4, MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(output_window, "Output");
+
+    for (i = 0; i < OUTPUT_CONSOLE_LINES; i++)
+    {
+        memset(console_content[i], '\0', OUTPUT_CONSOLE_COLS);
+    }
 
     display_monitor_update(cpu);
 
@@ -180,29 +192,65 @@ void print_message(const char *message, char *arg)
 /** Clears the message displayed just below the list of available user operations */
 void clear_line(int line)
 {
-    move(line, 0);
+    move(line, 1);
     clrtoeol();
 }
 
 /** Prints output resulting from the LC-3 */
 void display_monitor_print_output(char ch)
 {
-    if (ch != '\n')
+    /* Clear the whole output window */
+    wclrtobot(output_window);
+
+    /* If the character is a new-line, we'll shift all the lines up and clear
+    the last line */
+    if (ch == '\n')
     {
-        output_console[output_console_ptr] = ch;
-        output_console[++output_console_ptr] = '\0';
-        /** Position the message */
-        attron(COLOR_PAIR(2));
-        mvprintw(MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT * 2 + HEIGHT_PADDING, 6, "%s", output_console);
-        attroff(COLOR_PAIR(2));
+        if (console_line_ptr == OUTPUT_CONSOLE_LINES - 1)
+        {
+            for (i = 0; i < OUTPUT_CONSOLE_LINES - 1; i++)
+            {
+                strcpy(console_content[i], console_content[i + 1]);
+            }
+        }
+        /* Unless we have less than 3 lines written so far */
+        else
+        {
+            console_line_ptr++;
+        }
+        console_col_ptr = 0;
+        memset(console_content[console_line_ptr], '\0', OUTPUT_CONSOLE_COLS);
     }
     else
     {
-        output_console_ptr = 0;
-        output_console[output_console_ptr] = '\0';
-        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-        draw_io_window(output_window, "Output");
+        /* Write the character to the correct position.. duh.. */
+        console_content[console_line_ptr][console_col_ptr] = ch;
+        if (console_col_ptr < OUTPUT_CONSOLE_COLS - 1)
+        {
+            /* Increment the current column */
+            console_col_ptr++;
+        }
     }
+    /* If the character is a null-terminator we actually want to decrement the
+    pointer. This is because the next character written might want to be on the
+    same line (i.e. collecting user input on the same line after a prompt.) The
+    user input will overwrite the null-terminator, [[TODO: Then there will be no null
+    terminator after a PUTC???]] */
+    if (ch == '\0')
+    {
+        console_col_ptr--;
+    }
+
+    /** Position the message */
+    for (i = 0; i < OUTPUT_CONSOLE_LINES; i++)
+    {
+        wattron(output_window, COLOR_PAIR(3));
+        mvwprintw(output_window, 2 + i, 2, "%s", console_content[i]);
+        wattroff(output_window, COLOR_PAIR(3));
+    }
+
+    draw_io_window(output_window, "Output");
+    refresh();
 }
 
 char display_monitor_get_input()
@@ -261,8 +309,6 @@ void print_window_titles()
 /** Prints the title of a window */
 void print_title(WINDOW *win, int y, char *string, chtype color)
 {
-    if (win == NULL)
-        win = stdscr;
     wattron(win, color);
     mvwprintw(win, y, 4, "%s", string);
     wattroff(win, color);
@@ -283,9 +329,12 @@ void save_menu_indicies()
     for (i = 0; i < 3; i++)
     {
         ITEM *item = (ITEM *)current_item(menus[i]);
-        if (item != NULL) {
+        if (item != NULL)
+        {
             saved_menu_index[i] = item_index(item);
-        } else {
+        }
+        else
+        {
             saved_menu_index[i] = 0;
         }
     }
@@ -329,7 +378,7 @@ void display_monitor_update(CPU_p cpu)
         {
             sprintf(mem_strings[i].description, "x%04X    ", memory[i]);
         }
-        
+
         menu_list_items[MEM][i] = new_item(mem_strings[i].label, mem_strings[i].description);
     }
     menu_list_items[MEM][i] = new_item((char *)NULL, (char *)NULL);
@@ -420,9 +469,9 @@ void display_monitor_update(CPU_p cpu)
 int display_monitor_loop(CPU_p cpu)
 {
     /* Set selected item in memory to be current PC */
-    set_current_item(menus[MEM], menu_list_items[MEM][cpu->pc]);        
+    set_current_item(menus[MEM], menu_list_items[MEM][cpu->pc]);
     display_monitor_update(cpu);
-    
+
     /* Input array used for 5) Show Mem, 8) Set/Unset breakpoint */
     char mem_addr_input[6];
     char mem_data_input[6];
@@ -433,7 +482,8 @@ int display_monitor_loop(CPU_p cpu)
      *  LC-3 */
     char monitor_return = MONITOR_UPDATE;
 
-    if (is_halted) {
+    if (is_halted)
+    {
         print_message(MSG_CPU_HALTED, NULL);
     }
 
@@ -469,10 +519,14 @@ int display_monitor_loop(CPU_p cpu)
             {
                 print_message(MSG_STEP_NO_FILE, NULL);
                 monitor_return = MONITOR_NO_RETURN;
-            } else if (is_halted) {
+            }
+            else if (is_halted)
+            {
                 print_message(MSG_CPU_HALTED_STEP, NULL);
                 monitor_return = MONITOR_NO_RETURN;
-            } else {
+            }
+            else
+            {
                 print_message(MSG_STEP, NULL);
                 monitor_return = MONITOR_STEP;
             }
@@ -483,10 +537,14 @@ int display_monitor_loop(CPU_p cpu)
             {
                 print_message(MSG_RUN_NO_FILE, NULL);
                 monitor_return = MONITOR_NO_RETURN;
-            } else if (is_halted) {
+            }
+            else if (is_halted)
+            {
                 print_message(MSG_CPU_HALTED_RUN, NULL);
                 monitor_return = MONITOR_NO_RETURN;
-            } else {
+            }
+            else
+            {
                 print_message(MSG_RUNNING_CODE, NULL);
                 monitor_return = MONITOR_RUN;
             }
@@ -501,7 +559,7 @@ int display_monitor_loop(CPU_p cpu)
             getstr(mem_addr_input);
             noecho();
             mem_addr_index = get_mem_address(mem_addr_input);
-            set_current_item(menus[MEM], menu_list_items[MEM][mem_addr_index]);     
+            set_current_item(menus[MEM], menu_list_items[MEM][mem_addr_index]);
             monitor_return = MONITOR_NO_RETURN;
             break;
         case 54:
@@ -529,7 +587,7 @@ int display_monitor_loop(CPU_p cpu)
             mem_data = get_mem_data(mem_data_input);
             memory[mem_addr_index] = mem_data;
             monitor_return = MONITOR_UPDATE;
-            break;            
+            break;
         case 56:
             /* User selected 8) to set/unset a breakpoint */
             if (!file_loaded)
@@ -537,7 +595,7 @@ int display_monitor_loop(CPU_p cpu)
                 print_message(MSG_SET_UNSET_BRKPT_NO_FILE, NULL);
                 monitor_return = MONITOR_NO_RETURN;
             }
-            else 
+            else
             {
                 print_message(MSG_SET_UNSET_BRKPT, NULL);
                 /** Move the cursor, turn on echo mode so the user can see their input
@@ -591,14 +649,14 @@ int display_monitor_loop(CPU_p cpu)
         {
             return monitor_return;
         }
-
     }
 
     monitor_return = MONITOR_QUIT;
     return monitor_return;
 }
 
-unsigned int get_mem_address(char *mem_string) {
+unsigned int get_mem_address(char *mem_string)
+{
     /* A little bit of edge case handling...
      * x3002 + strlen("x3002") - 4 = 3002
      * 3002 + strlen("3002") - 4 = 3002 */
@@ -606,7 +664,8 @@ unsigned int get_mem_address(char *mem_string) {
     return translate_memory_address(address);
 }
 
-unsigned int get_mem_data(char *mem_string) {
+unsigned int get_mem_data(char *mem_string)
+{
     /* x3002 + strlen("x3002") - 4 = 3002
      * 3002 + strlen("3002") - 4 = 3002 */
     return strtol(mem_string + strlen(mem_string) - 4, NULL, 16);

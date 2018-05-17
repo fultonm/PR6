@@ -450,8 +450,10 @@ void trap(unsigned short vector, CPU_p cpu)
         break;
 
     case TRAP_VECTOR_X22:
-        while (memory[cpu->registers[R0]] != '\0') {
+         for (;;) {
             display_monitor_print_output(memory[cpu->registers[R0]]);
+            if (memory[cpu->registers[R0]] == '\0')
+                break;
             cpu->registers[R0]++;
         }
         break;

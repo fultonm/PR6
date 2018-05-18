@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <string.h>
 #include "slc3.h"
 #include "display_monitor.h"
 
@@ -27,6 +28,8 @@ bool is_run = false;
 int main(int argc, char *argv[])
 {
     file_loaded = 0;
+    char input_file_name[80];
+    FILE *file_ptr;
 
     /* Creating and initializing a CPU struct. */
     CPU_p cpu = (CPU_p)calloc(1, sizeof(struct CPU));
@@ -36,8 +39,17 @@ int main(int argc, char *argv[])
 
     /* If there is an argument, attempt to use it first as the file name. 
         Example file name: "/hex/HW3.hex" */
-    char *input_file_name = argv[1];
-    if (input_file_name != NULL) {
+    
+    //char *input_file_name = strcpy(argv[1];
+    if (argc > 1)
+    {
+        strcpy(input_file_name, argv[1]);
+        file_ptr = open_file(input_file_name);
+        while (file_ptr == NULL) 
+        {
+            printf("\nFile not found. Enter a file name: ");
+            scanf("%s", input_file_name);
+        }
         load_file_to_memory(cpu, open_file(input_file_name));
     }
 
@@ -59,7 +71,12 @@ int main(int argc, char *argv[])
 
         /* Case when the display monitor is loading a file. With the file pointer
            collected by the display monitor, call CPU to load the contents of that file. */
-        case MONITOR_LOAD:            
+        case MONITOR_LOAD:
+            do 
+            {
+                display_monitor_get_file_name(input_file_name);
+                file_ptr = open_file(input_file_name);
+            } while (file_ptr == NULL);
             load_file_to_memory(cpu, open_file(input_file_name));     
             break;
         /* Case when the display monitor is simply stepping through a loaded file. */
@@ -761,11 +778,23 @@ unsigned int translate_memory_address(unsigned int input_address)
 }
 
 /*
+ * This function will allow the opening of files
+ */
+FILE *open_file(char *input_file_name)
+{
+    /* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to
+	return to main program of the menu. */
+    FILE *input_file_pointer;
+    input_file_pointer = fopen(input_file_name, "r");
+    return input_file_pointer;
+}
+
+/*
  * This function allows for the loading of hex files into memory.
  */
 void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
 {    
-    if (file_loaded == true) {
+    if (file_loaded == 0) {
         char line[8];
         fgets(line, sizeof(line), input_file_pointer);
 

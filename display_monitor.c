@@ -229,6 +229,17 @@ char display_monitor_get_input()
     return input_ch;
 }
 
+void display_monitor_get_file_name(char *input_file_name)
+{
+     print_message(MSG_LOAD, NULL);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing file name input */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
+    echo();
+    getstr(input_file_name);
+    noecho();          
+}
+
 void print_window_titles()
 {
     /** Print a border around the windows and print a title */
@@ -452,13 +463,6 @@ int display_monitor_loop(CPU_p cpu)
             break;
         case 49:
             /* User selected 1) to load a file */
-            print_message(MSG_LOAD, NULL);
-            /** Move the cursor, turn on echo mode so the user can see their input
-             *  then turn it back on after capturing file name input */
-            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
-            echo();
-            getnstr(input_file_name, 80);
-            noecho();          
             monitor_return = MONITOR_LOAD;
             break;
         case 51:
@@ -608,27 +612,4 @@ unsigned int get_mem_data(char *mem_string) {
     /* x3002 + strlen("x3002") - 4 = 3002
      * 3002 + strlen("3002") - 4 = 3002 */
     return strtol(mem_string + strlen(mem_string) - 4, NULL, 16);
-}
-
-/*
- * This function will allow the opening of files
- */
-FILE *open_file(char *input_file_name)
-{
-    /* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to
-	return to main program of the menu. */
-    FILE *input_file_pointer;
-    input_file_pointer = fopen(input_file_name, "r");
-    //input_file_pointer = fopen("hex/HW3.hex", "r");
-    if (input_file_pointer == NULL)
-    {        
-        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-        print_message(MSG_FILE_NOT_LOADED, NULL);
-        file_loaded = 0;
-    } else {
-        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-        print_message(MSG_LOADED, input_file_name);
-        file_loaded = 1;
-    }
-    return input_file_pointer;
 }

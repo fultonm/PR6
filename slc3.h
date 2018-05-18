@@ -172,5 +172,6 @@ short SEXT(unsigned short, int);
 void setCC(unsigned short, CPU_p cpu);
 bool branch_enabled(unsigned short, CPU_p);
 unsigned int translate_memory_address(unsigned int input_address);
+FILE *open_file(char *input_file_name);
 
 #endif

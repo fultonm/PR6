@@ -36,6 +36,7 @@
 static const char MSG_CPU_HALTED[] =        "CPU halted :*)";
 static const char MSG_LOAD[] =              "1) Enter a program to load >> ";
 static const char MSG_LOADED[] =            "1) Loaded %s";
+static const char MSG_FILE_NOT_LOADED[] =   "1) File not found. Please try again.";
 static const char MSG_STEP[] =              "3) Stepped";
 static const char MSG_STEP_NO_FILE[] =      "3) No file loaded yet!";
 static const char MSG_RUNNING_CODE[] =      "4) Running code";
@@ -57,7 +58,7 @@ typedef struct MenuString
 
 int init_display_monitor(CPU_p);
 int free_display_monitor();
-int destroy_display_monitor();
+int display_monitor_destroy();
 void print_message(const char *, char *);
 void clear_message();
 int update_display_monitor(CPU_p);
@@ -456,11 +457,8 @@ int display_monitor_loop(CPU_p cpu)
              *  then turn it back on after capturing file name input */
             move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
             echo();
-            getstr(load_file_input);
-            noecho();
-
-            clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-            print_message(MSG_LOADED, load_file_input);
+            getstr(input_file_name);
+            noecho();          
             monitor_return = MONITOR_LOAD;
             break;
         case 51:
@@ -610,4 +608,24 @@ unsigned int get_mem_data(char *mem_string) {
     /* x3002 + strlen("x3002") - 4 = 3002
      * 3002 + strlen("3002") - 4 = 3002 */
     return strtol(mem_string + strlen(mem_string) - 4, NULL, 16);
+}
+
+/*
+ * This function will allow the opening of files
+ */
+FILE *open_file(char *input_file_name)
+{
+    /* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to
+	return to main program of the menu. */
+    FILE *input_file_pointer;
+    input_file_pointer = fopen(input_file_name, "r");
+    if (input_file_pointer == NULL)
+    {        
+        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
+        print_message(MSG_FILE_NOT_LOADED, NULL);
+    } else {
+        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
+        print_message(MSG_LOADED, input_file_name);
+    }
+    return input_file_pointer;
 }

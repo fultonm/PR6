@@ -13,7 +13,6 @@
 #include "slc3.h"
 #include "display_monitor.h"
 
-FILE *open_file();
 bool is_run = false;
 
 /*
@@ -35,15 +34,17 @@ int main(int argc, char *argv[])
         return 1;
     lc3_init(cpu);
 
-    // If there is an argument, attempt to used the first as a file name.
-    char *fileName = argv[1]; //char *fileName = "./hex/HW3.hex";
-    if(fileName != NULL) {
-        load_file_to_memory(cpu, open_file2(fileName));
+    /* If there is an argument, attempt to use it first as the file name. 
+        Example file name: "/hex/HW3.hex" */
+    char *input_file_name = argv[1];
+    if (input_file_name != NULL) {
+        load_file_to_memory(cpu, open_file(input_file_name));
     }
 
     /* Initialize and run the LC-3 from the debug monitor */
     display_monitor_init(cpu);
 
+    /* Initialize monitor return integer for following loop. */
     int monitor_return = display_monitor_loop(cpu);
 
     /* If the user has selected MONITOR_STEP, then lets continue executing the LC-3 */
@@ -51,21 +52,25 @@ int main(int argc, char *argv[])
     {
         switch (monitor_return)
         {
+        /* Case when the display monitor is updating (a no-op occurs). In this case, the
+           display monitor will simply break and continue throught the loop. */
         case MONITOR_UPDATE:
-            // printf("A no-op was passed... this shouldn't actually happen.");
-            /* Fall-through to update... */
             break;
 
+        /* Case when the display monitor is loading a file. With the file pointer
+           collected by the display monitor, call CPU to load the contents of that file. */
         case MONITOR_LOAD:
-            load_file_to_memory(cpu, open_file());
+            load_file_to_memory(cpu, open_file(input_file_name));     
             break;
-
+        /* Case when the display monitor is simply stepping through a loaded file. */
         case MONITOR_STEP:
             if (!is_halted)
             {
                 controller(cpu);
             }
             break;
+        /* Case when the display monitor is called to run a loaded file until the CPU halts 
+           or encounters a set breakpoint. */
         case MONITOR_RUN:
             if (!is_halted) {
                 do {
@@ -73,6 +78,9 @@ int main(int argc, char *argv[])
                 } while (!is_halted && !has_breakpoint[cpu->pc]);
             }
         }
+
+        /* Continue to update the display monitor return variable to determine if the
+           display monitor should continue looping. */
         monitor_return = display_monitor_loop(cpu);
     }
 
@@ -84,8 +92,8 @@ int main(int argc, char *argv[])
 }
 
 /*
- * This method initializes a passed in CPU object (technically a pointer to one)
- * by setting all of it's regsiter/state/memory values to zero.
+ * This method initializes a pointer to a passed-in CPU object
+ * by setting all of it's regsiter, state, and memory values to zero.
  */
 void lc3_init(CPU_p cpu)
 {
@@ -119,7 +127,7 @@ void lc3_init(CPU_p cpu)
     bit5 = 0;
     bit11 = 0;
     state = 0;
-    nzp = 0; // fields for the IR
+    nzp = 0;
     offset = 0;
     immed = 0;
     is_halted = false;
@@ -141,11 +149,6 @@ void controller(CPU_p cpu)
         exit(1);
     }
 
-    /* Creating integers array to store a binary representation of
-	   the contents of the CPU's instruction register. */
-    //int *binary_IR_contents = (int *)malloc(sizeof(int) * NUM_OF_BITS);
-    //int *binary_IR_helper_array = (int *)malloc(sizeof(int) * NUM_OF_BITS);
-
     /* Beginning instruction cycle. */
     state = FETCH;
     while (!isCycleComplete)
@@ -156,7 +159,7 @@ void controller(CPU_p cpu)
         case FETCH:
             /* Corresponding to FSM microstates 18, 33, and 35. */
             cpu->mar = cpu->pc;          // Step 1: MAR is loaded with the contends of the PC,
-            cpu->pc++;                   //         and also increment PC. Only done in the FETCH phase.
+            cpu->pc++;                   //         and the PC is then incremented. Only done in the FETCH phase.
             cpu->mdr = memory[cpu->mar]; // Step 2: Interrogate memory, resulting in the instruction placed into the MDR.
             cpu->ir = cpu->mdr;          // Step 3: Load the IR with the contents of the MDR.
             state = DECODE;              // Moving to next state.
@@ -165,7 +168,7 @@ void controller(CPU_p cpu)
         /* The second state of the instruction cycle, the "decode" state. */
         case DECODE:
             /* Corresponding to FSM state 32. Most of these decoding functions are
-				   delegated to helper functions. */
+			   delegated to helper functions. */
             opcode = (cpu->ir & MASK_OPCODE) >> BITSHIFT_OPCODE; // Input is the four-bit opcode IR[15:12]. The output line asserted is the one corresponding to the opcode at the input.
             state = EVAL_ADDR;                                   // Moving to next state.
             break;
@@ -220,8 +223,8 @@ void controller(CPU_p cpu)
         case FETCH_OP:
             switch (opcode)
             {
-            // get operands out of registers into A, B of ALU
-            // or get memory for load instr.
+            /* Get operands out of registers into A, B of ALU
+               or get memory for load instruction. */
             case ADD:
             case AND:
                 dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
@@ -229,14 +232,13 @@ void controller(CPU_p cpu)
                 bit5 = (cpu->ir & MASK_BIT5) >> BITSHIFT_BIT5;
                 if (bit5 == 0)
                 {
-                    sr2 = cpu->ir & MASK_SR2; // no shift needed.
+                    sr2 = cpu->ir & MASK_SR2; // No shift needed.
                 }
                 else if (bit5 == 1)
                 {
-                    immed = cpu->ir & MASK_IMMED5; // no shift needed.
+                    immed = cpu->ir & MASK_IMMED5; // No shift needed.
                     immed = SEXT(immed, BIT_IMMED);
-                }
-                // The book page 106 says current microprocessors can be done simultaneously during fetch, but this simulator is old skool.
+                }                
                 break;
             case NOT:
                 dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
@@ -314,7 +316,7 @@ void controller(CPU_p cpu)
                 break;
             case BR:
                 offset = SEXT(offset, BIT_PCOFFSET9);
-                if (branchEnabled(nzp, cpu))
+                if (branch_enabled(nzp, cpu))
                 {
                     cpu->pc += (offset);
                 }
@@ -462,14 +464,11 @@ void trap(unsigned short vector, CPU_p cpu)
 * This function will take the loaction of the high order bit of the immediate value
 * and sign extend it so that if the high order bit is a 1, then it will be converted to
 * negative value.
-*
-* @param value is the number to be sign extended.
-* @param instance determines what the high order bit is of the value.
 */
-short SEXT(unsigned short theValue, int highOrderBit)
+short SEXT(unsigned short input_value, int high_order_bit)
 {
-    short value = (short)theValue;
-    switch (highOrderBit)
+    short value = (short)input_value;
+    switch (high_order_bit)
     {
     case BIT_IMMED:
         if (((value & BIT_IMMED) >> BITSHIFT_NEGATIVE_IMMEDIATE) == 1)
@@ -496,14 +495,14 @@ short SEXT(unsigned short theValue, int highOrderBit)
 */
 void setCC(unsigned short value, CPU_p cpu)
 {
-    short signedValue = value;
-    if (signedValue < 0)
+    short signed_value = value;
+    if (signed_value < 0)
     {
         cpu->ccN = 1;
         cpu->ccZ = 0;
         cpu->ccP = 0;
     }
-    else if (signedValue == 0)
+    else if (signed_value == 0)
     {
         cpu->ccN = 0;
         cpu->ccZ = 1;
@@ -519,10 +518,8 @@ void setCC(unsigned short value, CPU_p cpu)
 
 /**
  * Sets the condition code resulting by the resulting computer value.
- * @param value the value that was recently computed.
- * @return the condition code that represents the 3bit NZP as binary.
  */
-bool branchEnabled(unsigned short nzp, CPU_p cpu)
+bool branch_enabled(unsigned short nzp, CPU_p cpu)
 {
     bool result = false;
     switch (nzp)
@@ -565,20 +562,23 @@ void set_condition_code(int input_number, CPU_p cpu)
 {
     if (input_number > 0)
     {
+        /* P */
         cpu->ccN = 0;
         cpu->ccZ = 0;
-        cpu->ccP = 1; /* P */
+        cpu->ccP = 1;
     }
     else if (input_number < 0)
     {
-        cpu->ccN = 1; /* N */
+        /* N */
+        cpu->ccN = 1; 
         cpu->ccZ = 0;
         cpu->ccP = 0;
     }
     else
     {
+        /* Z */
         cpu->ccN = 0;
-        cpu->ccZ = 1; /* Z */
+        cpu->ccZ = 1;
         cpu->ccP = 0;
     }
 }
@@ -761,43 +761,6 @@ unsigned int translate_memory_address(unsigned int input_address)
 }
 
 /*
- * This function will allow the opening of files
- */
-FILE *open_file()
-{
-    /* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to
-	return to main program of the menu. */
-    FILE *input_file_pointer;
-    input_file_pointer = fopen(load_file_input, "r");
-    if (input_file_pointer == NULL)
-    {
-        /*
-		 * Error checking is hard to do with this file structure... How can we get an
-		 * error message back to the display_monitor? We would want an error message to
-		 * appear right under the user selection options.
-		 */
-    }
-    return input_file_pointer;
-}
-
-/*
- * This function will allow the opening of files
- */
-FILE *open_file2(char *theFileName)
-{
-    /* Attempt to open file. If file isn't found or otherwise null, allow user to press enter to
-    return to main program of the menu. */
-    FILE *input_file_pointer;
-    input_file_pointer = fopen(theFileName, "r");
-    if (input_file_pointer == NULL)
-    {
-        // TODO Should display a message and re-prompt the user.
-    }
-    return input_file_pointer;
-}
-
-
-/*
  * This function allows for the loading of hex files into memory.
  */
 void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
@@ -809,9 +772,6 @@ void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
 	 * Subtract 0x3000 from first hex value in file to be starting memory location
 	 * Note: This requires the first line of the hex file to not be less than x3000 since
 	 * this is an unsigned short.
-	 *
-	 * IDEA: Create offset variable to hold difference between given start location and x3000?
-	 * This could be positive or negative value? Then compute from this value.
 	 */
     unsigned short first_address = strtol(line, NULL, 16);
     starting_address = first_address;

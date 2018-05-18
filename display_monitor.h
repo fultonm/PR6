@@ -18,8 +18,8 @@
 #define MONITOR_UPDATE      4
 #define MONITOR_NO_RETURN   5
 
-char load_file_input[80];
 bool has_breakpoint[NUM_OF_MEM_BANKS];
+char input_file_name[80];
 
 int display_monitor_init(CPU_p);
 void display_monitor_update(CPU_p);
@@ -27,5 +27,6 @@ int display_monitor_loop(CPU_p);
 int display_monitor_destroy();
 char display_monitor_get_input();
 void display_monitor_print_output(char);
+FILE *open_file(char *input_file_name);
 
 #endif

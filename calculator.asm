@@ -386,7 +386,7 @@ RangeCheck		LD 			R5,Neg999
 				BRn 		BadRange
 				AND 		R5,R5,#0		; R5 <-- success
 				RET
-BadRange		ST 			R7,Save			; R7 is needed by TRAP/RET.
+BadRange		ST 			R7,Save3		; R7 is needed by TRAP/RET.
 				LEA 		R0,RangeErrorMsg
 				TRAP 		x22				; Output character string
 				LD 			R7,Save3

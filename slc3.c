@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 
         /* Case when the display monitor is loading a file. With the file pointer
            collected by the display monitor, call CPU to load the contents of that file. */
-        case MONITOR_LOAD:
+        case MONITOR_LOAD:            
             load_file_to_memory(cpu, open_file(input_file_name));     
             break;
         /* Case when the display monitor is simply stepping through a loaded file. */
@@ -764,26 +764,30 @@ unsigned int translate_memory_address(unsigned int input_address)
  * This function allows for the loading of hex files into memory.
  */
 void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
-{
-    char line[8];
-    fgets(line, sizeof(line), input_file_pointer);
+{    
+    if (file_loaded == true) {
+        char line[8];
+        fgets(line, sizeof(line), input_file_pointer);
 
-    /*
-	 * Subtract 0x3000 from first hex value in file to be starting memory location
-	 * Note: This requires the first line of the hex file to not be less than x3000 since
-	 * this is an unsigned short.
-	 */
-    unsigned short first_address = strtol(line, NULL, 16);
-    starting_address = first_address;
+        /*
+        * Subtract 0x3000 from first hex value in file to be starting memory location
+        * Note: This requires the first line of the hex file to not be less than x3000 since
+        * this is an unsigned short.
+        */
+        unsigned short first_address = strtol(line, NULL, 16);
+        starting_address = first_address;
 
-    /* Read through file line by line and store to CPU memory. */
-    unsigned short address;
-    int result = 1;
-    int i = 0;
-    while (fscanf(input_file_pointer, "%hx", &address) != EOF)
-    {
-        memory[i] = address;
-        i += 1;
+        /* Read through file line by line and store to CPU memory. */
+        unsigned short address;
+        int result = 1;
+        int i = 0;
+        while (fscanf(input_file_pointer, "%hx", &address) != EOF)
+        {
+            memory[i] = address;
+            i += 1;
+        }
     }
+
+    /* Update the status to show that a file is currently loaded into memory. */
     file_loaded = 1;
 }

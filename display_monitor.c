@@ -457,7 +457,7 @@ int display_monitor_loop(CPU_p cpu)
              *  then turn it back on after capturing file name input */
             move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
             echo();
-            getstr(input_file_name);
+            getnstr(input_file_name, 80);
             noecho();          
             monitor_return = MONITOR_LOAD;
             break;
@@ -619,13 +619,16 @@ FILE *open_file(char *input_file_name)
 	return to main program of the menu. */
     FILE *input_file_pointer;
     input_file_pointer = fopen(input_file_name, "r");
+    //input_file_pointer = fopen("hex/HW3.hex", "r");
     if (input_file_pointer == NULL)
     {        
         clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
         print_message(MSG_FILE_NOT_LOADED, NULL);
+        file_loaded = 0;
     } else {
         clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
         print_message(MSG_LOADED, input_file_name);
+        file_loaded = 1;
     }
     return input_file_pointer;
 }

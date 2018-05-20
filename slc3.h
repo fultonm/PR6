@@ -13,21 +13,6 @@
 #include "global.h"
 #include "lc3.h"
 
-/* Instruction opcodes */
-#define ADD 1
-#define AND 5
-#define NOT 9
-#define BR 0
-#define JMP 12
-#define RET 12
-#define JSR 4
-#define TRAP 15
-#define LD 2
-#define LDR 6 // 0110 0000 0000 0000
-#define LEA 14
-#define ST 3
-#define STR 7 // 0111 0000 0000 0000
-
 /* Other Program Constants */
 #define NUM_OF_BITS 16
 #define NUM_OF_INSTRUCTIONS 6

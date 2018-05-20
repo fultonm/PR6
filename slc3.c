@@ -8,8 +8,8 @@
  */
 
 #include "slc3.h"
-#include "lc3.h"
 #include "display_monitor.h"
+#include "lc3.h"
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,11 +27,8 @@ FILE *open_file();
  * (from its instruction set).
  */
 int main(int argc, char *argv[]) {
-    /* Creating and initializing a CPU struct. */
-    lc3_p lc3 = (lc3_p)calloc(1, sizeof(struct lc3_t));
-    if (!lc3)
-        return 1;
-    lc3_init(lc3);
+    /* Creating and initializing a LC3 object. */
+    lc3_p lc3 = lc3_create();
 
     // If there is an argument, attempt to used the first as a file name.
     char *fileName = argv[1]; // char *fileName = "./hex/HW3.hex";
@@ -57,15 +54,15 @@ int main(int argc, char *argv[]) {
             break;
 
         case MONITOR_STEP:
-            if (!is_halted) {
+            if (lc3_is_halted(lc3) == FALSE) {
                 controller(cpu);
             }
             break;
         case MONITOR_RUN:
-            if (!is_halted) {
+            if (lc3_is_halted(lc3) == FALSE) {
                 do {
                     controller(cpu);
-                } while (!is_halted && !has_breakpoint[cpu->pc]);
+                } while (lc3_is_halted(lc3) == FALSE && !has_breakpoint[cpu->pc]);
             }
         }
         monitor_return = display_monitor_loop(cpu);
@@ -83,10 +80,8 @@ int main(int argc, char *argv[]) {
  * instruction cycle of the LC-3.
  */
 void controller(lc3_p lc3) {
-
-    opcode_t opcode;
-    reg_addr_t dr, sr1, sr2;
-
+    /** This is set to true at the end of the STORE phase and allows execution control to be
+     * passed back to the main loop */
     bool_t is_cycle_complete = FALSE;
 
     /* Ensuring that CPU pointer being passed into the controller is valid. */
@@ -94,399 +89,196 @@ void controller(lc3_p lc3) {
         exit(1);
     }
 
-    /* Creating integers array to store a binary representation of
-           the contents of the CPU's instruction register. */
-    // int *binary_IR_contents = (int *)malloc(sizeof(int) * NUM_OF_BITS);
-    // int *binary_IR_helper_array = (int *)malloc(sizeof(int) * NUM_OF_BITS);
-
     /* Beginning instruction cycle. */
-    set_state(FETCH);
+    set_state(STATE_FETCH);
     while (!is_cycle_complete) {
         switch (lc3_get_state(lc3)) {
         /* The first state of the instruction cycle, the "fetch" state. */
-        case FETCH:
-            lc3_ms_18(lc3);
-            lc3_ms_33(lc3);
+        case STATE_FETCH:
+            lc3_fetch(lc3);
+            lc3_set_state(lc3, STATE_DECODE);
             break;
 
         /* The second state of the instruction cycle, the "decode" state. */
-        case DECODE:
-            /* Corresponding to FSM state 32. Most of these decoding functions are
-                                   delegated to helper functions. */
-            opcode = (cpu->ir & MASK_OPCODE) >>
-                     BITSHIFT_OPCODE; // Input is the four-bit opcode IR[15:12].
-                                      // The output line asserted is the one
-                                      // corresponding to the opcode at the input.
-            state = EVAL_ADDR;        // Moving to next state.
+        case STATE_DECODE:
+            /* Corresponding to FSM state 32. */
+            lc3_decode(lc3);
+            lc3_set_state(lc3, STATE_EVAL_ADDR);
             break;
 
         /* The third state of the instruction cycle, the "evaluate address" state.
          */
-        case EVAL_ADDR:
-            switch (opcode) {
-            case LD:
-                dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
-                offset = cpu->ir & MASK_PCOFFSET9;
-                offset = SEXT(offset, BIT_PCOFFSET9);
-                cpu->mar = cpu->pc + offset; // microstate 2.
-                cpu->mdr = memory[cpu->mar]; // microstate 25.
+        case STATE_EVAL_ADDR:
+            switch (lc3_get_opcode(lc3)) {
+            case OPCODE_LD:
+                lc3_eval_addr_ld(lc3);
                 break;
-            case LDR:
-                dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
-                sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
-                offset = cpu->ir & MASK_PCOFFSET6;
-                offset = SEXT(offset, BIT_PCOFFSET6);
-                cpu->mar = cpu->registers[sr1] + offset;
-                cpu->mdr = memory[cpu->mar];
+            case OPCODE_LDI:
+                lc3_eval_addr_ldi(lc3);
                 break;
-            case ST:
-                dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR; // This is actually a source
-                                                         // register, but still use dr.
-                offset = cpu->ir & MASK_PCOFFSET9;
-                offset = SEXT(offset, BIT_PCOFFSET9);
-                cpu->mar = cpu->pc + offset; // microstate 2.
+            case OPCODE_LDR:
+                lc3_eval_addr_ldr(lc3);
                 break;
-            case STR:
-                dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;    // actually source register
-                sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1; // base register
-                offset = cpu->ir & MASK_PCOFFSET6;
-                offset = SEXT(offset, BIT_PCOFFSET6);
-                cpu->mar = cpu->registers[sr1] + offset;
+            case OPCODE_ST:
+                lc3_eval_addr_st(lc3);
                 break;
-            case LEA:
-                dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
-                offset = cpu->ir & MASK_PCOFFSET9;
-                offset = SEXT(offset, BIT_PCOFFSET9);
+            case OPCODE_STI:
+                lc3_eval_addr_sti(lc3);
                 break;
-            case JSR:
-                // TODO use a switch block for the bit to distinguish JSR and JSRR.
-                offset = cpu->ir & MASK_PCOFFSET11;
-                offset = SEXT(offset, BIT_PCOFFSET11);
+            case OPCODE_STR:
+                lc3_eval_addr_str(lc3);
+                break;
+            case OPCODE_JMP:
+                lc3_eval_addr_jmp(lc3);
+                break;
+            case OPCODE_JSR:
+                lc3_eval_addr_jsr(lc3);
+                break;
+            case OPCODE_BR:
+                lc3_eval_addr_br(lc3);
                 break;
             }
-            state = FETCH_OP; // Moving to next state.
+            lc3_set_state(lc3, STATE_FETCH_OP);
             break;
 
         /* The fourth state of the instruction cycle, the "fetch operands" state. */
-        case FETCH_OP:
-            switch (opcode) {
+        case STATE_FETCH_OP:
+            switch (lc3_get_opcode(lc3)) {
             // get operands out of registers into A, B of ALU
             // or get memory for load instr.
-            case ADD:
-            case AND:
-                dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
-                sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
-                imm_mode = (cpu->ir & MASK_BIT5) >> BITSHIFT_BIT5;
-                if (imm_mode == FALSE) {
-                    sr2 = cpu->ir & MASK_SR2; // no shift needed.
-                } else if (imm_mode == TRUE) {
-                    immed = cpu->ir & MASK_IMMED5; // no shift needed.
-                    immed = SEXT(immed, BIT_IMMED);
-                }
+            case OPCODE_ADD:
+                lc3_fetch_op_add(lc3);
+
+                break;
+            case OPCODE_AND:
+                lc3_fetch_op_and(lc3);
                 // The book page 106 says current microprocessors can be done
                 // simultaneously during fetch, but this simulator is old skool.
                 break;
-            case NOT:
-                dr = (cpu->ir & MASK_DR) >> BITSHIFT_DR;
-                sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
+            case OPCODE_NOT:
+                lc3_fetch_op_not(lc3);
                 break;
-            case TRAP:
-                vector = cpu->ir & MASK_TRAPVECT8; // No shift needed.
+            case OPCODE_TRAP:
+                lc3_fetch_op_trap(lc3);
                 break;
-            case ST: // Same as LD.
-            case STR:
-                // Book page 124.
-                cpu->mdr = cpu->registers[dr];
+            case OPCODE_LD:
+                lc3_fetch_op_ld(lc3);
                 break;
-            case JMP:
-                sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
+            case OPCODE_LDI:
+                lc3_fetch_op_ldi(lc3);
                 break;
-            case BR:
-                nzp = (cpu->ir & MASK_NZP) >> BITSHIFT_CC;
-                offset = cpu->ir & MASK_PCOFFSET9;
+            case OPCODE_LDR:
+                lc3_fetch_op_ldr(lc3);
                 break;
-            case JSR:
-                imm_mode = (cpu->ir & MASK_BIT11) >> BITSHIFT_BIT11;
-                cpu->registers[7] = cpu->pc;
-                if (bit11 == 0) { // JSRR
-                    sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
-                    cpu->pc = cpu->registers[sr1];
-                } else { // JSR
-                    cpu->pc += offset;
-                }
+            case OPCODE_ST:
+                lc3_fetch_op_st(lc3);
+                break;
+            case OPCODE_STI:
+                lc3_fetch_op_sti(lc3);
+                break;
+            case OPCODE_STR:
+                lc3_fetch_op_str(lc3);
                 break;
             }
-            state = EXECUTE; // Moving to next state.
+            lc3_set_state(lc3, STATE_EXECUTE);
             break;
 
         /* The fifth state of the instruction cycle, the "execute" state. */
-        case EXECUTE:
-            switch (opcode) {
-            case ADD:
-                if (imm_mode == FALSE) {
-                    cpu->mdr = cpu->registers[sr2] + cpu->registers[sr1];
-                } else if (imm_mode == TRUE) {
-                    cpu->mdr = cpu->registers[sr1] + immed;
-                }
-                setCC(cpu->mdr, cpu); // TODO should this be set in this phase?
+        case STATE_EXECUTE:
+            switch (lc3_get_opcode(lc3)) {
+            case OPCODE_ADD:
+                lc3_execute_add(lc3);
                 break;
-            case AND:
-                if (imm_mode == 0) {
-                    cpu->mdr = cpu->registers[sr2] & cpu->registers[sr1];
-                } else if (imm_mode == 1) {
-                    cpu->mdr = cpu->registers[sr1] & immed;
-                }
-                setCC(cpu->mdr, cpu); // TODO should this be set in this phase?
+            case OPCODE_AND:
+                lc3_execute_and(lc3);
                 break;
-            case NOT:
-                cpu->mdr = ~cpu->registers[sr1]; // Interpret as a negative if the
-                                                 // leading bit is a 1.
-                setCC(cpu->mdr, cpu);            // TODO should this be set in this phase?
+            case OPCODE_NOT:
+                lc3_execute_not(lc3);
                 break;
-            case TRAP:
-                // Book page 222.
-                cpu->registers[7] = cpu->pc; // Store the PC in R7 before loading PC with the
-                                             // starting address of the service routine.
-                trap(vector, cpu);
+            case OPCODE_TRAP:
+                trap(lc3, lc3_execute_trap(lc3));
                 break;
-            case JMP:
-                cpu->pc = cpu->registers[sr1];
-                break;
-            case BR:
-                offset = SEXT(offset, BIT_PCOFFSET9);
-                if (branchEnabled(nzp, cpu)) {
-                    cpu->pc += (offset);
-                }
+            case OPCODE_BR:
+                lc3_execute_br(lc3);
                 break;
             }
-            state = STORE; // Moving to next state.
+            lc3_set_state(lc3, STATE_STORE);
             break;
 
         /* The sixth state of the instruction cycle, the "store" state. */
-        case STORE:
+        case STATE_STORE:
             /* Corresponding to FSM state 16. */
-            switch (opcode) {
+            switch (lc3_get_opcode(lc3)) {
             // write back to register or store MDR into memory
-            case ADD:
-            case AND: // Same as ADD
-            case NOT: // Same as AND and AND.
-                cpu->registers[dr] = cpu->mdr;
+            case OPCODE_ADD:
+                lc3_store_add(lc3);
                 break;
-            case LD:
-            case LDR:
-                cpu->registers[dr] = cpu->mdr; // Load into the register.
-                setCC(cpu->registers[dr], cpu);
+            case OPCODE_AND:
+                lc3_store_and(lc3);
                 break;
-            case ST:
-            case STR:
-                memory[cpu->mar] = cpu->mdr; // Store into memory.
+            case OPCODE_NOT:
+                lc3_store_not(lc3);
                 break;
-            case LEA:
-                cpu->registers[dr] = cpu->pc + offset;
-                setCC(cpu->registers[dr], cpu);
+            case OPCODE_LD:
+                lc3_store_ld(lc3);
                 break;
-                // do any clean up here in prep for the next complete cycle
-                isCycleComplete = true;
-                state = FETCH;
+            case OPCODE_LDI:
+                lc3_store_ldi(lc3);
+                break;
+            case OPCODE_LDR:
+                lc3_store_ldr(lc3);
+                break;
+            case OPCODE_ST:
+                lc3_store_st(lc3);
+                break;
+            case OPCODE_STI:
+                lc3_store_sti(lc3);
+                break;
+            case OPCODE_STR:
+                lc3_store_str(lc3);
+                break;
+            case OPCODE_LEA:
+                lc3_store_lea(lc3);
                 break;
             }
-            isCycleComplete = true;
+            is_cycle_complete = TRUE;
+            lc3_set_state(lc3, STATE_FETCH);
             break;
         } // end switch (state)
-
-    } // end while (isCycleComplete)
-
-    if (is_halted) {
-        cpu->pc = 0;
-    }
+    }     // end while (isCycleComplete)
 } // end controller()
 
 /*
  * This function that determines and executes the appropriate trap routine based
  * on the trap vector passed.
  */
-void trap(unsigned short vector, CPU_p cpu) {
+void trap(lc3_p lc3, word_t vector) {
     char c;
 
     switch (vector) {
     case TRAP_VECTOR_X25:
-        /* Exit program state. */
-        cpu->state = FETCH;
-        is_halted = 1;
+        /** HALT */
+        lc3_trap_x25(lc3);
         break;
-
     case TRAP_VECTOR_X20:
-        /* getch */
+        /** GETC */
         c = display_monitor_get_input();
-        cpu->registers[R0] = c;
+        lc3_trap_x20(lc3, c);
         break;
-
     case TRAP_VECTOR_X21:
-        display_monitor_print_output(cpu->registers[R0]);
+        /** OUT */
+        c = lc3_trap_x21(lc3);
+        display_monitor_print_output(c);
         break;
-
     case TRAP_VECTOR_X22:
-        while (memory[cpu->registers[R0]] != '\0') {
-            display_monitor_print_output(memory[cpu->registers[R0]]);
-            cpu->registers[R0]++;
+        /** PUTS */
+        c = lc3_trap_x22(lc3);
+        while (c != '\0') {
+            display_monitor_print_output(c);
+            c = lc3_trap_x22(lc3);
         }
         break;
     }
-}
-
-/**
- * This function will take the loaction of the high order bit of the immediate
- * value and sign extend it so that if the high order bit is a 1, then it will
- * be converted to negative value.
- *
- * @param value is the number to be sign extended.
- * @param instance determines what the high order bit is of the value.
- */
-short SEXT(unsigned short theValue, int highOrderBit) {
-    short value = (short)theValue;
-    switch (highOrderBit) {
-    case BIT_IMMED:
-        if (((value & BIT_IMMED) >> BITSHIFT_NEGATIVE_IMMEDIATE) == 1)
-            value = value | MASK_NEGATIVE_IMMEDIATE;
-        break;
-    case BIT_PCOFFSET11:
-        if (((value & BIT_PCOFFSET11) >> BITSHIFT_NEGATIVE_PCOFFSET11) == 1)
-            value = value | MASK_NEGATIVE_PCOFFSET11;
-        break;
-    case BIT_PCOFFSET9:
-        if (((value & BIT_PCOFFSET9) >> BITSHIFT_NEGATIVE_PCOFFSET9) == 1)
-            value = value | MASK_NEGATIVE_PCOFFSET9;
-        break;
-    case BIT_PCOFFSET6:
-        if (((value & BIT_PCOFFSET6) >> BITSHIFT_NEGATIVE_PCOFFSET6) == 1)
-            value = value | MASK_NEGATIVE_PCOFFSET6;
-        break;
-    }
-    return value;
-}
-
-/**
- * This function will determine the condition code based on the value passed
- */
-void setCC(unsigned short value, CPU_p cpu) {
-    short signedValue = value;
-    if (signedValue < 0) {
-        cpu->ccN = 1;
-        cpu->ccZ = 0;
-        cpu->ccP = 0;
-    } else if (signedValue == 0) {
-        cpu->ccN = 0;
-        cpu->ccZ = 1;
-        cpu->ccP = 0;
-    } else {
-        cpu->ccN = 0;
-        cpu->ccZ = 0;
-        cpu->ccP = 1;
-    }
-}
-
-/**
- * Sets the condition code resulting by the resulting computer value.
- * @param value the value that was recently computed.
- * @return the condition code that represents the 3bit NZP as binary.
- */
-bool branchEnabled(unsigned short nzp, CPU_p cpu) {
-    bool result = false;
-    switch (nzp) {
-    case CONDITION_NZP:
-        result = true;
-        break;
-    case CONDITION_NP:
-        if (cpu->ccN || cpu->ccP)
-            result = true;
-        break;
-    case CONDITION_NZ:
-        if (cpu->ccN || cpu->ccZ)
-            result = true;
-        break;
-    case CONDITION_ZP:
-        if (cpu->ccZ || cpu->ccP)
-            result = true;
-        break;
-    case CONDITION_N:
-        if (cpu->ccN)
-            result = true;
-        break;
-    case CONDITION_Z:
-        if (cpu->ccZ)
-            result = true;
-        break;
-    case CONDITION_P:
-        if (cpu->ccP)
-            result = true;
-        break;
-    }
-    return result;
-}
-
-/*
- * This function will set the condition code based on the input number passed.
- */
-void set_condition_code(int input_number, CPU_p cpu) {
-    if (input_number > 0) {
-        cpu->ccN = 0;
-        cpu->ccZ = 0;
-        cpu->ccP = 1; /* P */
-    } else if (input_number < 0) {
-        cpu->ccN = 1; /* N */
-        cpu->ccZ = 0;
-        cpu->ccP = 0;
-    } else {
-        cpu->ccN = 0;
-        cpu->ccZ = 1; /* Z */
-        cpu->ccP = 0;
-    }
-}
-
-/*
- * This function determines and returns a 1 or 0 to represent if a branch
- * should be taken or not.
- */
-int get_branch_enabled(int *binary_IR_contents, int *binary_IR_helper_array, CPU_p cpu) {
-    /* Corresponds to bits [4:6] in memory. */
-    binary_IR_contents_to_int16(binary_IR_helper_array, binary_IR_contents, 4, 3);
-
-    /* Convert the condition code to an istarting_addressnteger array for bit comparison. */
-    int *condition_code = (int *)malloc(sizeof(int) * 3);
-    int i;
-    int temp_array[3];
-
-    temp_array[0] = cpu->ccN;
-    temp_array[1] = cpu->ccZ;
-    temp_array[2] = cpu->ccP;
-
-    for (i = 0; i < 3; i++) {
-        condition_code[2 - i] = temp_array[i];
-    }
-
-    /* Finally, determine if branch should be enabled. */
-    int result = 0;
-    for (i = 0; i < 3; i++) {
-        if (binary_IR_helper_array[i] == condition_code[i]) {
-            result = 1; /* If any bit is shared between the two, set branch enabled
-                           to 1. */
-        }
-    }
-
-    /* Memory cleanup. */
-    free(condition_code);
-    return result;
-}
-
-/*
- * This function prints a binary representation of a given unsigned integer
- * value to the screen.
- */
-void print_binary_form(unsigned value) {
-    if (value > 1)
-        print_binary_form(value / 2);
-
-    printf("%d", value % 2);
 }
 
 /*

@@ -9,22 +9,24 @@
 #define STATE_EXECUTE 4
 #define STATE_STORE 5
 
-/* Instruction opcodes */
-#define OPCODE_ADD 1
-#define OPCODE_AND 5
-#define OPCODE_NOT 9
-#define OPCODE_BR 0
-#define OPCODE_JMP 12
-#define OPCODE_RET 12
-#define OPCODE_JSR 4
-#define OPCODE_TRAP 15
-#define OPCODE_LD 2
-#define OPCODE_LDR 6 // 0110 0000 0000 0000
-#define OPCODE_LEA 14
-#define OPCODE_ST 3
-#define OPCODE_STR 7 // 0111 0000 0000 0000
+/** Instruction opcodes */
+#define OPCODE_ADD 1   /* 0001 */
+#define OPCODE_AND 5   /* 0101 */
+#define OPCODE_NOT 9   /* 1001 */
+#define OPCODE_BR 0    /* 0000 */
+#define OPCODE_JMP 12  /* 1100 */
+#define OPCODE_RET 12  /* 1100 */
+#define OPCODE_JSR 4   /* 0100 */
+#define OPCODE_TRAP 15 /* 1111 */
+#define OPCODE_LD 2    /* 0010 */
+#define OPCODE_LDI 10  /* 1010 */
+#define OPCODE_LDR 6   /* 0110 */
+#define OPCODE_LEA 14  /* 1101 */
+#define OPCODE_ST 3    /* 0011 */
+#define OPCODE_STI 11  /* 1011 */
+#define OPCODE_STR 7   /* 0111 */
 
-#define BIT_IMMED5 16        // 0000 0000 0001 0000
+#define BIT_IMMED5 16       // 0000 0000 0001 0000
 #define BIT_PCOFFSET11 1024 // 0000 0100 0000 0000
 #define BIT_PCOFFSET9 256   // 0000 0001 0000 0000
 #define BIT_PCOFFSET6 32    // 0000 0000 0010 0000
@@ -32,12 +34,10 @@
 // How many times to shift the bits.
 #define BITSHIFT_OPCODE 12
 #define BITSHIFT_DR 9
-#define BITSHIFT_CC 9
+#define BITSHIFT_NZP 9
 #define BITSHIFT_SR1 6
 #define BITSHIFT_BIT5 5
 #define BITSHIFT_BIT11 11
-#define BITSHIFT_CC_BIT3 2
-#define BITSHIFT_CC_BIT2 1
 #define BITSHIFT_NEGATIVE_IMMED5 4
 #define BITSHIFT_NEGATIVE_PCOFFSET11 10
 #define BITSHIFT_NEGATIVE_PCOFFSET9 8
@@ -55,10 +55,7 @@
 #define MASK_BIT5 32         // 0000 0000 0010 0000
 #define MASK_IMMED5 31       // 0000 0000 0001 1111
 #define MASK_NZP 3584        // 0000 1110 0000 0000
-#define MASK_CC_N 7
-#define MASK_CC_Z 5
-#define MASK_CC_P 1
-#define MASK_NEGATIVE_IMMED5 0xFFE0  // 1111 1111 1110 0000
+#define MASK_NEGATIVE_IMMED5 0xFFE0     // 1111 1111 1110 0000
 #define MASK_NEGATIVE_PCOFFSET11 0xF800 // 1111 1000 0000 0000
 #define MASK_NEGATIVE_PCOFFSET9 0xFE00  // 1111 1110 0000 0000
 #define MASK_NEGATIVE_PCOFFSET6 0xFFC0  // 1111 1111 1100 0000
@@ -74,6 +71,9 @@ void lc3_reset(lc3_p);
 /** Deallocates the LC3 module */
 void lc3_destroy(lc3_p);
 
+/** Fetches bit 5 (immediate mode flag for AND and ADD) from the IR */
+bool_t lc3_get_imm_mode(lc3_p lc3);
+
 /** Sets the starting address for the PC according to the first line in the loaded hex file */
 void lc3_set_starting_address(lc3_p, word_t starting_address);
 
@@ -88,3 +88,6 @@ void lc3_toggle_file_loaded(lc3_p);
 /** Gets/sets the current microstate of the LC3 */
 state_t lc3_get_state(lc3_p);
 void lc3_set_state(lc3_p, state_t state);
+
+/** Gets the opcode currently being processed */
+opcode_t lc3_get_opcode(lc3_p);

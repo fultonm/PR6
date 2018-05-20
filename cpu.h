@@ -18,13 +18,13 @@ word_t cpu_get_register(cpu_p, reg_addr_t reg);
 void cpu_set_register(cpu_p, reg_addr_t reg, word_t data);
 
 /** Fetches the high order bit of the CC representing negative */
-bool_t cpu_fetch_cc_n(cpu_p);
+bool_t cpu_get_cc_n(cpu_p);
 
 /** Fetches the second bit of the CC representing zero */
-bool_t cpu_fetch_cc_z(cpu_p);
+bool_t cpu_get_cc_z(cpu_p);
 
 /** Fetches the low order bit of the CC representing positive */
-bool_t cpu_fetch_cc_p(cpu_p);
+bool_t cpu_get_cc_p(cpu_p);
 
 /** Sets the instruction register */
 void cpu_set_ir(cpu_p, word_t data);

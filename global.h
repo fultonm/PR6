@@ -18,6 +18,12 @@
 #define R6 6
 #define R7 7
 
+#define MASK_CC_Z 5                  /* 010 */
+#define MASK_CC_P 1                  /* 001 */
+
+#define BITSHIFT_CC_N 2
+#define BITSHIFT_CC_Z 1
+
 /** Define the data types used by LC-3. Each LC-3 data type is assigned the smallest and most
  * appropriate C data type here. */
 typedef unsigned short word_t;

@@ -7,16 +7,21 @@
  * operations.
  */
 
-#include "display_monitor.h"
-#include "slc3.h"
+
+#include <stdlib.h>
+#include <signal.h>
+#include <string.h>
 #include <curses.h>
 #include <menu.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <string.h>
+#include "global.h"
+#include "display.h"
+#include "lc3.h"
+#include "memory.h"
+#include "cpu.h"
+#include "alu.h"
 
-#define REG 0
-#define MEM 1
+#define INDEX_REG 0
+#define INDEX_MEM 1
 #define CPU 2
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
@@ -31,7 +36,7 @@
 #define IO_PANEL_HEIGHT 5
 #define HEIGHT_PADDING 2
 
-#define NUM_CPU_ELEMENTS 10
+#define CPU_ELEMENTS_COUNT 10
 
 static const char MSG_CPU_HALTED[] = "CPU halted :*)";
 static const char MSG_LOAD[] = "1) Enter a program to load >> ";
@@ -49,17 +54,33 @@ static const char MSG_SET_UNSET_BRKPT_NO_FILE[] = "8) No file loaded yet!";
 static const char MSG_CPU_HALTED_STEP[] = "3) Cannot step: CPU halted";
 static const char MSG_CPU_HALTED_RUN[] = "4) Cannot run: CPU halted";
 
-typedef struct MenuString {
+struct menu_string_t {
   char label[31];
   char description[31];
-} MenuString;
+};
 
-int init_display_monitor(CPU_p);
-int free_display_monitor();
-int destroy_display_monitor();
+typedef struct display_t {
+  menu_string_t reg_strings[REGISTER_SIZE + 1];
+  menu_string_t mem_strings[MEMORY_SIZE + 1];
+  menu_string_t cpu_strings[CPU_ELEMENTS_COUNT + 1];
+
+  WINDOW *menu_windows[3];
+  WINDOW *input_window, *output_window;
+  MENU *menus[3];
+  ITEM **menu_list_items[3];
+  int item_counts[3];
+  int saved_menu_index[3];
+  int active_window;
+  int c, i;
+  char output_console[36];
+  char output_console_ptr;
+
+  bool breakpoints[MEMORY_SIZE];
+} *display_p;
+
+int free_display(display_p);
 void print_message(const char *, char *);
 void clear_message();
-int update_display_monitor(CPU_p);
 void clear_line(int line);
 void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
@@ -71,29 +92,15 @@ unsigned int get_mem_data(char *);
  * These have +1 because in addition to the actual string representing data in
  * the LC-3, a null
  * value must also be present to signify the end of the array. */
-MenuString reg_strings[NUM_OF_REGISTERS + 1];
-MenuString mem_strings[MEM_SIZE + 1];
-MenuString cpu_strings[NUM_CPU_ELEMENTS + 1];
 
-WINDOW *menu_windows[3];
-WINDOW *input_window, *output_window;
-MENU *menus[3];
-ITEM **menu_list_items[3];
-int item_counts[3];
-int saved_menu_index[3];
-int active_window = MEM;
-int c, i;
-char output_console[36];
-char output_console_ptr = 0;
-
-bool breakpoints[NUM_OF_MEM_BANKS];
 
 /** Initializes the debug monitor with variables needed throughout the execution
  * of the LC-3 simulator. */
-int display_monitor_init(LC3_p lc3) {
+int display_init(display_p disp, const lc3_p lc3, const memory_p memory, const cpu_p cpu, const alu_p alu) {
   /* Initialize breakpoint array */
-  for (i = 0; i < NUM_OF_MEM_BANKS; i++) {
-    breakpoints[i] = false;
+  int i;
+  for (i = 0; i < MEMORY_SIZE; i++) {
+    disp->breakpoints[i] = false;
   }
 
   /* Initialize ncurses */
@@ -106,46 +113,46 @@ int display_monitor_init(LC3_p lc3) {
   init_pair(2, COLOR_CYAN, COLOR_BLACK);
 
   /* Stores the size of each array */
-  item_counts[REG] = NUM_OF_REGISTERS;
-  item_counts[MEM] = NUM_OF_MEM_BANKS;
+  disp->item_counts[INDEX_REG] = REGISTER_SIZE;
+  disp->item_counts[INDEX_MEM] = MEMORY_SIZE;
   char display_mem_input[6];
-  item_counts[CPU] = NUM_CPU_ELEMENTS;
+  disp->item_counts[CPU] = CPU_ELEMENTS_COUNT;
 
-  saved_menu_index[REG] = 0;
-  saved_menu_index[MEM] = 0;
-  saved_menu_index[CPU] = 0;
+  disp->saved_menu_index[INDEX_REG] = 0;
+  disp->saved_menu_index[INDEX_MEM] = 0;
+  disp->saved_menu_index[CPU] = 0;
 
-  menu_list_items[REG] = (ITEM **)calloc(item_counts[REG] + 1, sizeof(ITEM *));
-  menu_list_items[MEM] = (ITEM **)calloc(item_counts[MEM] + 1, sizeof(ITEM *));
-  menu_list_items[CPU] = (ITEM **)calloc(item_counts[CPU] + 1, sizeof(ITEM *));
+  disp->menu_list_items[INDEX_REG] = (ITEM **)calloc(disp->item_counts[INDEX_REG] + 1, sizeof(ITEM *));
+  disp->menu_list_items[INDEX_MEM] = (ITEM **)calloc(disp->item_counts[INDEX_MEM] + 1, sizeof(ITEM *));
+  disp->menu_list_items[CPU] = (ITEM **)calloc(disp->item_counts[CPU] + 1, sizeof(ITEM *));
 
   /* Create the window instances to be associated with the menus */
-  menu_windows[REG] = newwin(REG_PANEL_HEIGHT, REG_PANEL_WIDTH, HEIGHT_PADDING, 4);
-  menu_windows[MEM] = newwin(MEM_PANEL_HEIGHT, MEM_PANEL_WIDTH, HEIGHT_PADDING, CPU_PANEL_WIDTH + 8);
-  menu_windows[CPU] = newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + HEIGHT_PADDING, 4);
+  disp->menu_windows[INDEX_REG] = newwin(REG_PANEL_HEIGHT, REG_PANEL_WIDTH, HEIGHT_PADDING, 4);
+  disp->menu_windows[INDEX_MEM] = newwin(MEM_PANEL_HEIGHT, MEM_PANEL_WIDTH, HEIGHT_PADDING, CPU_PANEL_WIDTH + 8);
+  disp->menu_windows[CPU] = newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + HEIGHT_PADDING, 4);
 
-  input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
+  disp->input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
                         MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
-  draw_io_window(input_window, "Input");
-  output_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
+  draw_io_window(disp->input_window, "Input");
+  disp->output_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
                          MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
-  draw_io_window(output_window, "Output");
+  draw_io_window(disp->output_window, "Output");
 
-  display_monitor_update(lc3);
+  display_update(disp, lc3, memory, cpu, alu);
 
   return 0;
 }
 
 /** Frees the memory associated with windows within the LC-3 debug monitor and
  * prepares the debug monitor for a refresh of displayed contents. */
-int display_monitor_free() {
-  int j;
+int free_display(display_p disp) {
+  int i, j;
   for (i = 0; i < 3; i++) {
     /* Unpost and free all the memory taken up */
-    unpost_menu(menus[i]);
-    free_menu(menus[i]);
-    for (j = 0; j < item_counts[i] + 1; ++j) {
-      free_item(menu_list_items[i][j]);
+    unpost_menu(disp->menus[i]);
+    free_menu(disp->menus[i]);
+    for (j = 0; j < disp->item_counts[i] + 1; ++j) {
+      free_item(disp->menu_list_items[i][j]);
     }
   }
 
@@ -154,7 +161,7 @@ int display_monitor_free() {
 
 /** Frees all memory associated with Ncurses and prepares the LC-3 simulator for
  * a complete shutdown. */
-int display_monitor_destroy() {
+int display_destroy(display_p disp) {
   display_monitor_free();
   for (i = 0; i < 3; i++) {
     delwin(menu_windows[i]);
@@ -183,7 +190,7 @@ void clear_line(int line) {
 }
 
 /** Prints output resulting from the LC-3 */
-void display_monitor_print_output(char ch) {
+void display_print_output(display_p disp, char ch) {
   if (ch != '\n') {
     output_console[output_console_ptr] = ch;
     output_console[++output_console_ptr] = '\0';
@@ -200,7 +207,7 @@ void display_monitor_print_output(char ch) {
   }
 }
 
-char display_monitor_get_input() {
+char display_get_input(display_p disp) {
   int prev_active_window = active_window;
 
   /* Draw all other windows as inactive, draw input as active */
@@ -222,29 +229,29 @@ char display_monitor_get_input() {
   return input_ch;
 }
 
-void print_window_titles() {
+void print_window_titles(display_p disp) {
   /** Print a border around the windows and print a title */
-  print_title(menu_windows[REG], 1, "Registers", (active_window == REG) ? COLOR_PAIR(2) : COLOR_PAIR(1));
-  mvwaddch(menu_windows[REG], 2, 0, ACS_LTEE);
-  mvwhline(menu_windows[REG], 2, 1, ACS_HLINE, 38);
+  print_title(disp->menu_windows[INDEX_REG], 1, "Registers", (disp->active_window == INDEX_REG) ? COLOR_PAIR(2) : COLOR_PAIR(1));
+  mvwaddch(disp->menu_windows[INDEX_REG], 2, 0, ACS_LTEE);
+  mvwhline(disp->menu_windows[INDEX_REG], 2, 1, ACS_HLINE, 38);
   /** mvwaddch(menu_windows[REG], 2, REG_PANEL_WIDTH - 1, ACS_RTEE);
       box(reg_menu_win, 0, 0); */
 
-  print_title(menu_windows[MEM], 1, "Memory", (active_window == MEM) ? COLOR_PAIR(2) : COLOR_PAIR(1));
-  mvwaddch(menu_windows[MEM], 2, 0, ACS_LTEE);
-  mvwhline(menu_windows[MEM], 2, 1, ACS_HLINE, 38);
+  print_title(disp->menu_windows[INDEX_MEM], 1, "Memory", (disp->active_window == INDEX_MEM) ? COLOR_PAIR(2) : COLOR_PAIR(1));
+  mvwaddch(disp->menu_windows[INDEX_MEM], 2, 0, ACS_LTEE);
+  mvwhline(disp->menu_windows[INDEX_MEM], 2, 1, ACS_HLINE, 38);
   /** mvwaddch(menu_windows[MEM], 2, MEM_PANEL_WIDTH - 1, ACS_RTEE);
       box(mem_menu_win, 0, 0); */
 
-  print_title(menu_windows[CPU], 1, "CPU Registers", (active_window == CPU) ? COLOR_PAIR(2) : COLOR_PAIR(1));
-  mvwaddch(menu_windows[CPU], 2, 0, ACS_LTEE);
-  mvwhline(menu_windows[CPU], 2, 1, ACS_HLINE, 38);
+  print_title(disp->menu_windows[CPU], 1, "CPU Registers", (disp->active_window == CPU) ? COLOR_PAIR(2) : COLOR_PAIR(1));
+  mvwaddch(disp->menu_windows[CPU], 2, 0, ACS_LTEE);
+  mvwhline(disp->menu_windows[CPU], 2, 1, ACS_HLINE, 38);
   /** mvwaddch(menu_windows[CPU], 2, CPU_PANEL_WIDTH - 1, ACS_RTEE);
       box(cpu_menu_win, 0, 0); */
 
   /* Refresh the menus */
   for (i = 0; i < 3; i++) {
-    wrefresh(menu_windows[i]);
+    wrefresh(disp->menu_windows[i]);
   }
 
   refresh();
@@ -269,20 +276,22 @@ void draw_io_window(WINDOW *window, char *title) {
   wrefresh(window);
 }
 
-void save_menu_indicies() {
+void save_menu_indicies(display_p disp) {
+  int i;
   for (i = 0; i < 3; i++) {
-    ITEM *item = (ITEM *)current_item(menus[i]);
+    ITEM *item = (ITEM *)current_item(disp->menus[i]);
     if (item != NULL) {
-      saved_menu_index[i] = item_index(item);
+      disp->saved_menu_index[i] = item_index(item);
     } else {
-      saved_menu_index[i] = 0;
+      disp->saved_menu_index[i] = 0;
     }
   }
 }
 
-void restore_menu_indicies() {
+void restore_menu_indicies(display_p disp) {
+  int i;
   for (i = 0; i < 3; i++) {
-    set_current_item(menus[i], menu_list_items[i][saved_menu_index[i]]);
+    set_current_item(disp->menus[i], disp->menu_list_items[i][disp->saved_menu_index[i]]);
   }
   refresh();
 }
@@ -290,31 +299,32 @@ void restore_menu_indicies() {
 /** Updates the Ncurses window each time this function is called. The arrays
  * containing menu data are all rebuilt, the menus are reinstantiated,
  * positioned, and posted to the windows. */
-void display_monitor_update(LC3_p lc3) {
-  save_menu_indicies();
-  display_monitor_free();
+void display_update(display_p disp, const lc3_p lc3, const memory_p memory, const cpu_p cpu, const alu_p alu) {
+  save_menu_indicies(disp);
+  free_display(disp);
 
-  for (i = 0; i < item_counts[REG]; ++i) {
-    sprintf(reg_strings[i].label, "R%d:", i);
-    sprintf(reg_strings[i].description, "x%04X", lc3->cpu->registers[i]);
-    menu_list_items[REG][i] = new_item(reg_strings[i].label, reg_strings[i].description);
+  int i;
+  for (i = 0; i < disp->item_counts[INDEX_REG]; ++i) {
+    sprintf(disp->reg_strings[i].label, "R%d:", i);
+    sprintf(disp->reg_strings[i].description, "x%04X", 0x3000);
+    disp->menu_list_items[INDEX_REG][i] = new_item(disp->reg_strings[i].label, disp->reg_strings[i].description);
   }
-  menu_list_items[REG][i] = new_item((char *)NULL, (char *)NULL);
+  disp->menu_list_items[INDEX_REG][i] = new_item((char *)NULL, (char *)NULL);
 
   /* Create the items for the memory */
-  for (i = 0; i < item_counts[MEM]; ++i) {
-    sprintf(mem_strings[i].label, "x%04X:", lc3->starting_address + i); /* So to start at x3000 */
+  for (i = 0; i < disp->item_counts[INDEX_MEM]; ++i) {
+    sprintf(disp->mem_strings[i].label, "x%04X:", lc3->starting_address + i); /* So to start at x3000 */
     /* If this memory location has a breakpoint we will display a small square
      * next to it. */
-    if (breakpoints[i]) {
-      sprintf(mem_strings[i].description, "x%04X [x]", memory[i]);
+    if (disp->breakpoints[i]) {
+      sprintf(disp->mem_strings[i].description, "x%04X [x]", memory[i]);
     } else {
-      sprintf(mem_strings[i].description, "x%04X    ", memory[i]);
+      sprintf(disp->mem_strings[i].description, "x%04X    ", memory[i]);
     }
 
-    menu_list_items[MEM][i] = new_item(mem_strings[i].label, mem_strings[i].description);
+    menu_list_items[INDEX_MEM][i] = new_item(mem_strings[i].label, mem_strings[i].description);
   }
-  menu_list_items[MEM][i] = new_item((char *)NULL, (char *)NULL);
+  menu_list_items[INDEX_MEM][i] = new_item((char *)NULL, (char *)NULL);
 
   /* Create items for the CPU */
   sprintf(cpu_strings[0].label, "PC:");
@@ -359,11 +369,11 @@ void display_monitor_update(LC3_p lc3) {
 
   /* The the menu sub ??? and its format menu_format is number of rows, columns
    * for the list's visible contents and scrolls the rest of the list. */
-  set_menu_sub(menus[REG], derwin(menu_windows[REG], REG_PANEL_HEIGHT - 4, REG_PANEL_WIDTH - 4, 3, 1));
-  set_menu_format(menus[REG], REG_PANEL_HEIGHT - 4, 1);
+  set_menu_sub(menus[INDEX_REG], derwin(menu_windows[INDEX_REG], REG_PANEL_HEIGHT - 4, REG_PANEL_WIDTH - 4, 3, 1));
+  set_menu_format(menus[INDEX_REG], REG_PANEL_HEIGHT - 4, 1);
   /* Memories... */
-  set_menu_sub(menus[MEM], derwin(menu_windows[MEM], MEM_PANEL_HEIGHT - 4, MEM_PANEL_WIDTH - 4, 3, 1));
-  set_menu_format(menus[MEM], MEM_PANEL_HEIGHT - 4, 1);
+  set_menu_sub(menus[INDEX_MEM], derwin(menu_windows[INDEX_MEM], MEM_PANEL_HEIGHT - 4, MEM_PANEL_WIDTH - 4, 3, 1));
+  set_menu_format(menus[INDEX_MEM], MEM_PANEL_HEIGHT - 4, 1);
   /* CPU... */
   set_menu_sub(menus[CPU], derwin(menu_windows[CPU], CPU_PANEL_HEIGHT - 4, CPU_PANEL_WIDTH - 4, 3, 1));
   set_menu_format(menus[CPU], MEM_PANEL_HEIGHT - 4, 2);
@@ -394,9 +404,9 @@ void display_monitor_update(LC3_p lc3) {
 
 /** The main logic loop for the debug monitor. Listens for user keystrokes and
  * performs debugging operations */
-MonitorReturn display_monitor_loop(LC3_p lc3) {
+MonitorReturn display_loop(display_p disp) {
   /* Set selected item in memory to be current PC */
-  set_current_item(menus[MEM], menu_list_items[MEM][lc3->cpu->pc]);
+  set_current_item(menus[INDEX_MEM], menu_list_items[INDEX_MEM][lc3->cpu->pc]);
   display_monitor_update(lc3);
 
   /* Input array used for 5) Show Mem, 8) Set/Unset breakpoint */
@@ -475,7 +485,7 @@ MonitorReturn display_monitor_loop(LC3_p lc3) {
       getstr(mem_addr_input);
       noecho();
       mem_addr_index = get_mem_address(mem_addr_input);
-      set_current_item(menus[MEM], menu_list_items[MEM][mem_addr_index]);
+      set_current_item(menus[INDEX_MEM], menu_list_items[INDEX_MEM][mem_addr_index]);
       monitor_return.user_action = MONITOR_NO_ACTION;
       break;
     case 54:

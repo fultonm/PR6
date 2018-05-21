@@ -18,6 +18,8 @@
 #define MONITOR_UPDATE 4
 #define MONITOR_NO_ACTION 5
 
+typedef struct display_t *display_p;
+
 typedef struct MonitorReturn {
     int user_action;
     bool breakpoint;
@@ -25,11 +27,11 @@ typedef struct MonitorReturn {
 
 char load_file_input[80];
 
-int display_monitor_init(LC3_p);
-void display_monitor_update(LC3_p);
-int display_monitor_loop(LC3_p);
-int display_monitor_destroy();
-char display_monitor_get_input();
-void display_monitor_print_output(char);
+int display_init(display_p);
+void display_update(display_p);
+int display_loop(display_p);
+int display_destroy(display_p);
+char display_get_input(display_p);
+void display_print_output(display_p, char);
 
 #endif

@@ -1,11 +1,15 @@
-/* LC-3 Emulator
+/* 
+ * LC-3 Simulator Simulator
+ * Contributors: Mike Fulton, Sam Brendel, Logan Stafford, Enoch Chan
+ * TCSS372 - Computer Architecture - Spring 2018
  *
- * Date: May 2018
- *
- * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3
+ * Display Monitor Module
+ * 
+ * This a terminal-based program that emulates the the 16-bit LC-3
  * machine based a finite state machine (FSM) interpretation of its operations.
  */
 
+/* Display Monitor Dependencies */
 #include <curses.h>
 #include <menu.h>
 #include <string.h>
@@ -15,13 +19,12 @@
 #include "slc3.h"
 #include "display_monitor.h"
 
+/* Display Monitor Constants */
 #define REG 0
 #define MEM 1
 #define CPU 2
-
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define CTRLD 4
-
 #define REG_PANEL_WIDTH 36
 #define REG_PANEL_HEIGHT 12
 #define MEM_PANEL_WIDTH 30
@@ -30,52 +33,51 @@
 #define CPU_PANEL_HEIGHT 12
 #define IO_PANEL_HEIGHT 5
 #define HEIGHT_PADDING 2
-
 #define NUM_CPU_ELEMENTS 10
 
-static const char MSG_CPU_HALTED[] =        "CPU halted :*)";
-static const char MSG_LOAD[] =              "1) Enter a program to load >> ";
-static const char MSG_LOADED[] =            "1) Loaded %s";
-static const char MSG_FILE_NOT_LOADED[] =   "1) File not found. Please try again.";
-static const char MSG_STEP[] =              "3) Stepped";
-static const char MSG_STEP_NO_FILE[] =      "3) No file loaded yet!";
-static const char MSG_RUNNING_CODE[] =      "4) Running code";
-static const char MSG_RUN_NO_FILE[] =       "4) No file loaded yet!";
-static const char MSG_DISPLAY_MEM[] =       "5) Enter the hex address to jump to >> ";
-static const char MSG_EDIT_MEM_PROMPT_ADDR[] = "6) Enter the hex address to edit >> ";
-static const char MSG_EDIT_MEM_PROMPT_DATA[] = "6) Enter the hex data to push to %s >> ";
-static const char MSG_EDIT_MEM_NO_FILE[] =  "6) No file loaded yet!";
-static const char MSG_SET_UNSET_BRKPT[] =   "8) Enter the hex address to set/unset breakpoint >> ";
+/* Display Monitor String Constants */
+static const char MSG_CPU_HALTED[] =              "CPU halted :*)";
+static const char MSG_LOAD[] =                    "1) Enter a program to load >> ";
+static const char MSG_LOADED[] =                  "1) Loaded %s";
+static const char MSG_FILE_NOT_LOADED[] =         "1) File not found. Please try again.";
+static const char MSG_STEP[] =                    "3) Stepped";
+static const char MSG_STEP_NO_FILE[] =            "3) No file loaded yet!";
+static const char MSG_RUNNING_CODE[] =            "4) Running code";
+static const char MSG_RUN_NO_FILE[] =             "4) No file loaded yet!";
+static const char MSG_DISPLAY_MEM[] =             "5) Enter the hex address to jump to >> ";
+static const char MSG_EDIT_MEM_PROMPT_ADDR[] =    "6) Enter the hex address to edit >> ";
+static const char MSG_EDIT_MEM_PROMPT_DATA[] =    "6) Enter the hex data to push to %s >> ";
+static const char MSG_EDIT_MEM_NO_FILE[] =        "6) No file loaded yet!";
+static const char MSG_SET_UNSET_BRKPT[] =         "8) Enter the hex address to set/unset breakpoint >> ";
 static const char MSG_SET_UNSET_BRKPT_NO_FILE[] = "8) No file loaded yet!";
-static const char MSG_CPU_HALTED_STEP[] =   "3) Cannot step: CPU halted";
-static const char MSG_CPU_HALTED_RUN[] =    "4) Cannot run: CPU halted";
+static const char MSG_CPU_HALTED_STEP[] =         "3) Cannot step: CPU halted";
+static const char MSG_CPU_HALTED_RUN[] =          "4) Cannot run: CPU halted";
 
+/* MenuString struct with label and description string attributes. */
 typedef struct MenuString
 {
     char label[31];
     char description[31];
 } MenuString;
 
+/* Display Monitor Function Declarations */
 int init_display_monitor(CPU_p);
 int free_display_monitor();
 int display_monitor_destroy();
+int update_display_monitor(CPU_p);
+unsigned int get_mem_address(char *);
+unsigned int get_mem_data(char *);
 void print_message(const char *, char *);
 void clear_message();
-int update_display_monitor(CPU_p);
 void clear_line(int line);
 void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
 void print_window_titles();
-unsigned int get_mem_address(char *);
-unsigned int get_mem_data(char *);
 
-/** Ensure these are at least as big (or equal to) the actual vaues in the CPU. These have
- * +1 because in addition to the actual string representing data in the LC-3, a null
- * value must also be present to signify the end of the array. */
+/* Display Monitor Variables */
 MenuString reg_strings[NUM_OF_REGISTERS + 1];
 MenuString mem_strings[NUM_OF_MEM_BANKS + 1];
 MenuString cpu_strings[NUM_CPU_ELEMENTS + 1];
-
 WINDOW *menu_windows[3];
 WINDOW *input_window, *output_window;
 MENU *menus[3];
@@ -87,9 +89,14 @@ int c, i;
 char output_console[36];
 char output_console_ptr = 0;
 
-
-/** Initializes the debug monitor with variables needed throughout the execution of the
- * LC-3 simulator. */
+/*
+ * The Display Monitor initialization function.
+ * Initializes the debug monitor with variables needed throughout
+ * the execution of the LC-3 simulator. 
+ * 
+ * Input: A CPU struct to initialize and display.
+ * Output: 0 on success, otherwise some failure.
+ */
 int display_monitor_init(CPU_p cpu)
 {
     /* Initialize ncurses */
@@ -105,7 +112,7 @@ int display_monitor_init(CPU_p cpu)
         has_breakpoint[i] = false;
     }
 
-    /* Stores the size of each array */
+    /* Stores the size of each array. */
     item_counts[REG] = NUM_OF_REGISTERS;
     item_counts[MEM] = NUM_OF_MEM_BANKS;char display_mem_input[6];
     item_counts[CPU] = NUM_CPU_ELEMENTS;
@@ -118,18 +125,21 @@ int display_monitor_init(CPU_p cpu)
     menu_list_items[MEM] = (ITEM **)calloc(item_counts[MEM] + 1, sizeof(ITEM *));
     menu_list_items[CPU] = (ITEM **)calloc(item_counts[CPU] + 1, sizeof(ITEM *));
 
-    /* Create the window instances to be associated with the menus */
+    /* Create the window instances to be associated with the menus. */
     menu_windows[REG] = newwin(REG_PANEL_HEIGHT, REG_PANEL_WIDTH, HEIGHT_PADDING, 4);
     menu_windows[MEM] = newwin(MEM_PANEL_HEIGHT, MEM_PANEL_WIDTH, HEIGHT_PADDING, CPU_PANEL_WIDTH + 8);
     menu_windows[CPU] = newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + HEIGHT_PADDING, 4);
 
+    /* Create and draw the input/output windows. */
     input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4, MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(input_window, "Input");
     output_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4, MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(output_window, "Output");
 
+    /* Update the Display Monitor based on the given CPU struct. */
     display_monitor_update(cpu);
 
+    /* Return zero on success. */
     return 0;
 }
 
@@ -361,8 +371,7 @@ void display_monitor_update(CPU_p cpu)
     sprintf(cpu_strings[5].description, "x%04X", cpu->mdr);
     sprintf(cpu_strings[6].label, "CC N:");
     sprintf(cpu_strings[6].description, "%d", cpu->ccN);
-    /* Inserting a blank one so the CC stuff looks better */
-    sprintf(cpu_strings[7].label, " ");
+    sprintf(cpu_strings[7].label, " "); /* Inserting a blank line so CC looks better */
     sprintf(cpu_strings[7].description, " ");
     sprintf(cpu_strings[8].label, "CC Z:");
     sprintf(cpu_strings[8].description, "%d", cpu->ccZ);
@@ -460,7 +469,7 @@ int display_monitor_loop(CPU_p cpu)
             active_window = active_window % 3;
             keypad(menu_windows[active_window], TRUE);
             print_window_titles();
-            break;
+            break;            
         case 49:
             /* User selected 1) to load a file */
             monitor_return = MONITOR_LOAD;

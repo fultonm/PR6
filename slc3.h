@@ -1,8 +1,11 @@
-/* LC-3 Emulator
+/* 
+ * LC-3 Simulator Simulator
+ * Contributors: Mike Fulton, Sam Brendel, Logan Stafford, Enoch Chan
+ * TCSS372 - Computer Architecture - Spring 2018
  *
- * Date: May 2018
- *
- * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3
+ * LC3 Simulator Module Header
+ * 
+ * This a terminal-based program that emulates the the 16-bit LC-3
  * machine based a finite state machine (FSM) interpretation of its operations.
  */
 
@@ -116,7 +119,7 @@
 #define MAX_HEX_BITS 4
 #define MAX_BIN_BITS 16
 
-/* LC-3 Global Variables */
+/* LC-3 Variables */
 unsigned char file_loaded;
 unsigned int opcode, dr, sr1, sr2, bit5, bit11, state, nzp;
 short offset, immed;
@@ -130,32 +133,33 @@ typedef struct ALU
 {
 	/* The ALU of the LC-3 is comprised of a two input,
 	   one output general purpose arithmetic/logic multiplexer. */
-	unsigned short a;	   // First input: A.
-	unsigned short b;	   // Second input: B.
-	unsigned short result; // Output/result.
+	unsigned short a;	   						/* First input: A */
+	unsigned short b;	   						/* Second input: B */
+	unsigned short result; 						/* Output/result */
 } *ALU_p;
 
 /* CPU Struct */
 typedef struct CPU
 {
-	ALU_p alu;
+	ALU_p alu; 									/* Contains a single ALU struct. */
+
 	/* Various CPU registers and memory. */
-	unsigned short registers[NUM_OF_REGISTERS];
-	unsigned short state;
-	unsigned short ir;  // instruction_register
-	unsigned short pc;  // program_counter
-	unsigned short ccN; // condition_code
-	unsigned short ccZ;
-	unsigned short ccP;
-	unsigned short mar; // memory_address_register
-	unsigned short mdr; // memory_data_register
-	unsigned short dr;  // destination_register
-	unsigned short sr1; // source1_register
-	unsigned short sr2; // source2_register
-	unsigned short base_registers;
-	unsigned short alu_a;
-	unsigned short alu_b;
-	unsigned short alu_result;
+	unsigned short registers[NUM_OF_REGISTERS]; /* CPU Registers */
+	unsigned short state;						/* Current CPU state */
+	unsigned short ir;  						/* Instruction Register */
+	unsigned short pc;  						/* Program Counter */
+	unsigned short ccN; 						/* Condition code "N" */
+	unsigned short ccZ;							/* Condition code "Z" */
+	unsigned short ccP;							/* Condition code "P" */
+	unsigned short mar; 						/* Memory Address Register */
+	unsigned short mdr; 						/* Memory Data Register */
+	unsigned short dr;  						/* Destination Register */
+	unsigned short sr1; 						/* Source 1 Register */
+	unsigned short sr2; 						/* Source 2 Register */
+	unsigned short base_registers;				/* The CPU base registers */
+	unsigned short alu_a; 						/* Input A of the ALU */
+	unsigned short alu_b; 						/* Input B of the ALU */
+	unsigned short alu_result; 					/* Output result of the ALU */
 } *CPU_p;
 
 /* LC-3 Function Definitions */
@@ -168,9 +172,9 @@ void print_binary_form(unsigned value);
 void handle_user_input(CPU_p cpu);
 void display_display_monitor(CPU_p cpu);
 void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer);
-short SEXT(unsigned short, int);
 void setCC(unsigned short, CPU_p cpu);
 bool branch_enabled(unsigned short, CPU_p);
+short SEXT(unsigned short, int);
 unsigned int translate_memory_address(unsigned int input_address);
 FILE *open_file(char *input_file_name);
 

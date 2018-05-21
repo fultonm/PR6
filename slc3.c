@@ -1,11 +1,15 @@
-/* LC-3 Emulator
+/* 
+ * LC-3 Simulator Simulator
+ * Contributors: Mike Fulton, Sam Brendel, Logan Stafford, Enoch Chan
+ * TCSS372 - Computer Architecture - Spring 2018
  *
- * Date: May 2018
- *
- * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3
+ * LC3 Simulator Module
+ * 
+ * This a terminal-based program that emulates the the 16-bit LC-3
  * machine based a finite state machine (FSM) interpretation of its operations.
  */
 
+/* LC3 Simulator Dependencies*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -40,7 +44,6 @@ int main(int argc, char *argv[])
     /* If there is an argument, attempt to use it first as the file name. 
         Example file name: "/hex/HW3.hex" */
     
-    //char *input_file_name = strcpy(argv[1];
     if (argc > 1)
     {
         strcpy(input_file_name, argv[1]);

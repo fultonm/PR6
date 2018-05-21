@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
         case MONITOR_LOAD:
             do 
             {
+                //print_message("File not found, please try again.", NULL);
                 display_monitor_get_file_name(input_file_name);
                 file_ptr = open_file(input_file_name);
             } while (file_ptr == NULL);

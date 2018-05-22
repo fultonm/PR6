@@ -7,12 +7,14 @@
  * operations.
  */
 
-#include "slc3.h"
-#include "display_monitor.h"
-#include "lc3.h"
+
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "slc3.h"
+#include "display.h"
+#include "lc3.h"
 
 FILE *open_file();
 
@@ -36,8 +38,7 @@ int main(int argc, char *argv[]) {
         load_file_to_memory(cpu, open_file2(fileName));
     }
 
-    /* Initialize and run the LC-3 from the debug monitor */
-    display_monitor_init(cpu);
+    display_p disp = display_create();
 
     int monitor_return = display_monitor_loop(cpu);
 
@@ -342,3 +343,5 @@ void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer) {
     }
     file_loaded = 1;
 }
+
+

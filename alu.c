@@ -1,3 +1,4 @@
+#include "global.h"
 #include "slc3.h"
 
 typedef struct alu_t {
@@ -25,6 +26,15 @@ void initialize(alu_p alu) {
 
 /** Deallocates the ALU */
 void alu_destroy(alu_p alu) { free(alu); }
+
+/** Takes a snapshot of the ALU data for debugging or display purposes */
+alu_snapshot_t alu_get_snapshot(alu_p alu) {
+    alu_snapshot_t snapshot;
+    snapshot.a = alu->sr1;
+    snapshot.b = alu->sr2;
+    snapshot.result = alu->result;
+    return snapshot;
+}
 
 /** Load ALU source register 1 */
 void alu_load_sr1(alu_p alu, word_t data) { alu->sr1 = data; }

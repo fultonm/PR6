@@ -1,6 +1,12 @@
-#include "slc3.h"
+#include "global.h"
 
 typedef struct alu_t *alu_p;
+
+typedef struct alu_snapshot_t {
+    word_t a;
+    word_t b;
+    word_t result;
+} alu_snapshot_t;
 
 /** Allocates and initializes a new ALU module */
 alu_p alu_create();
@@ -13,6 +19,9 @@ void alu_initialize(alu_p alu);
 
 /** Deallocates the ALU */
 void alu_destroy(alu_p alu);
+
+/** Takes a snapshot of the ALU data for debugging or display purposes */
+alu_snapshot_t alu_get_snapshot(alu_p);
 
 /** Load ALU source register 1 */
 void alu_load_sr1(alu_p, word_t data);

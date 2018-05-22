@@ -1,3 +1,4 @@
+
 #include "alu.h"
 #include "cpu.h"
 #include "global.h"
@@ -6,7 +7,7 @@
 typedef struct lc3_t {
     cpu_p cpu;
     alu_p alu;
-    mem_p memory;
+    memory_p memory;
 
     word_t starting_address;
     bool_t is_halted;
@@ -377,9 +378,6 @@ void lc3_fetch_op_ldr(lc3_p lc3) {
     word_t data = memory_get_data(lc3->memory, mar);
     cpu_set_mdr(lc3->cpu, data);
 }
-
-
-
 
 word_t lc3_execute_trap(lc3_p lc3) {
     /** This is an extra credit opportunity to fully implement trap according to Microstates

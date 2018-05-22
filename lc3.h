@@ -43,18 +43,18 @@
 #define BITSHIFT_NEGATIVE_PCOFFSET9 8
 #define BITSHIFT_NEGATIVE_PCOFFSET6 5
 
-#define MASK_OPCODE 61440    // 1111 0000 0000 0000
-#define MASK_DR 3584         // 0000 1110 0000 0000
-#define MASK_SR1 448         // 0000 0001 1100 0000
-#define MASK_SR2 7           // 0000 0000 0000 0111
-#define MASK_PCOFFSET11 2047 // 0000 0111 1111 1111
-#define MASK_PCOFFSET9 511   // 0000 0001 1111 1111
-#define MASK_PCOFFSET6 63    // 0000 0000 0011 1111
-#define MASK_TRAPVECT8 255   // 0000 0000 1111 1111
-#define MASK_BIT11 2048      // 0000 1000 0000 0000
-#define MASK_BIT5 32         // 0000 0000 0010 0000
-#define MASK_IMMED5 31       // 0000 0000 0001 1111
-#define MASK_NZP 3584        // 0000 1110 0000 0000
+#define MASK_OPCODE 61440               // 1111 0000 0000 0000
+#define MASK_DR 3584                    // 0000 1110 0000 0000
+#define MASK_SR1 448                    // 0000 0001 1100 0000
+#define MASK_SR2 7                      // 0000 0000 0000 0111
+#define MASK_PCOFFSET11 2047            // 0000 0111 1111 1111
+#define MASK_PCOFFSET9 511              // 0000 0001 1111 1111
+#define MASK_PCOFFSET6 63               // 0000 0000 0011 1111
+#define MASK_TRAPVECT8 255              // 0000 0000 1111 1111
+#define MASK_BIT11 2048                 // 0000 1000 0000 0000
+#define MASK_BIT5 32                    // 0000 0000 0010 0000
+#define MASK_IMMED5 31                  // 0000 0000 0001 1111
+#define MASK_NZP 3584                   // 0000 1110 0000 0000
 #define MASK_NEGATIVE_IMMED5 0xFFE0     // 1111 1111 1110 0000
 #define MASK_NEGATIVE_PCOFFSET11 0xF800 // 1111 1000 0000 0000
 #define MASK_NEGATIVE_PCOFFSET9 0xFE00  // 1111 1110 0000 0000
@@ -62,8 +62,11 @@
 
 typedef struct lc3_t *lc3_p;
 
-/** Allocates and initializes a new LC3 module */
-lc3_p lc3_create();
+typedef struct
+
+    /** Allocates and initializes a new LC3 module */
+    lc3_p
+    lc3_create();
 
 /** Reinitializes the LC3 module without reallocation */
 void lc3_reset(lc3_p);

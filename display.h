@@ -19,16 +19,18 @@
 #define MONITOR_NO_ACTION 5
 
 typedef struct display_t *display_p;
+typedef struct cpu_t *cpu_p;
 
-typedef struct MonitorReturn {
+typedef struct display_loop_result_t {
     int user_action;
     bool breakpoint;
-} MonitorReturn;
+} display_loop_result_t;
 
 char load_file_input[80];
 
-int display_init(display_p);
-void display_update(display_p);
+display_p display_create(const lc3_snapshot_t);
+void display_reset(display_p);
+void display_update(display_p, lc3_snapshot_t);
 int display_loop(display_p);
 int display_destroy(display_p);
 char display_get_input(display_p);

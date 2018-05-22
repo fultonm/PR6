@@ -1,4 +1,6 @@
 
+#include <stdlib.h>
+#include "lc3.h"
 #include "alu.h"
 #include "cpu.h"
 #include "global.h"
@@ -22,40 +24,58 @@ typedef struct lc3_t {
 } lc3_t, *lc3_p;
 
 /** Sets LC3 values to default starting values */
-void initialize(lc3_p);
+void initialize_lc3(lc3_p);
 
 /** Reinitializes the variables used during each phase of instruction processing */
 void initialize_intrastate(lc3_p);
 
-/** Get the opcode from the IR */
+/** Fetches the opcode from the IR */
 opcode_t fetch_opcode(lc3_p);
 
-/** Get the destination register from the IR */
+/** Fetches the destination register from the IR */
 reg_addr_t get_dr(lc3_p);
 
-/** Get the source register 1 from the IR */
+/** Fetches the source register 1 from the IR */
 reg_addr_t get_sr1(lc3_p);
 
-/** Get the source register 2 from the IR */
+/** Fetches the source register 2 from the IR */
 reg_addr_t get_sr2(lc3_p);
 
-/** Get bit 5 (immediate mode flag for AND and ADD) from the IR */
-bool_t get_bit_5(lc3_p);
+/** Fetches bit 5 (immediate mode flag for AND and ADD) from the IR */
+bool_t get_imm_mode(lc3_p);
 
-/** Get the 5 immediate bits (AND and ADD) from the IR */
+/** Fetches the immediate bits from the IR */
+bool_t get_jsr_imm_mode(lc3_p);
+
+/** Fetches the NZP bits from the IR */
+cc_t get_nzp(lc3_p);
+
+/** Fetches the high order bit of the NZP representing negative */
+bool_t get_nzp_n(cc_t);
+
+/** Fetches the second bit of the NZP representing zero */
+bool_t get_nzp_z(cc_t);
+
+/** Fetches the low order bit of the NZP representing positive */
+bool_t get_nzp_p(cc_t);
+
+/** Fetches the 5 immediate bits (AND and ADD) from the IR */
 imm_5_t get_imm_5(lc3_p);
 
-/** Get the 6 PC offset bits (LDR and STR) from the IR */
+/** Fetches the 6 PC offset bits (LDR and STR) from the IR */
 pc_offset_6_t get_pc_offset_6(lc3_p);
 
-/** Get the 9 PC offset bits (BR, LD, LDI, LEA, ST, and STI) from the IR */
+/** Fetches the 9 PC offset bits (BR, LD, LDI, LEA, ST, and STI) from the IR */
 pc_offset_9_t get_pc_offset_9(lc3_p);
 
-/** Get the 11 PC offset bits (JSR) from the IR */
+/** Fetches the 11 PC offset bits (JSR) from the IR */
 pc_offset_11_t get_pc_offset_11(lc3_p);
 
-/** Get the TRAP vector from the IR */
+/** Fetches the TRAP vector from the IR */
 trap_vector_t get_trap_vector(lc3_p);
+
+/** Zero extends the trap vector to be a full 16-bit word */
+word_t zext(trap_vector_t);
 
 /** Allocates and initializes a new LC3 module */
 lc3_p lc3_create() {
@@ -63,7 +83,7 @@ lc3_p lc3_create() {
     lc3->cpu = cpu_create();
     lc3->alu = alu_create();
     lc3->memory = memory_create();
-    initialize(lc3);
+    initialize_lc3(lc3);
     return lc3;
 }
 
@@ -72,23 +92,7 @@ void lc3_reset(lc3_p lc3) {
     cpu_reset(lc3->cpu);
     alu_reset(lc3->alu);
     memory_reset(lc3->memory);
-    initialize(lc3);
-}
-
-/** Sets LC3 values to default starting values */
-void lc3_initialize(lc3_p lc3) {
-    lc3->starting_address = MEMORY_ADDRESS_MIN;
-    lc3->is_halted = FALSE;
-    lc3->is_file_loaded = FALSE;
-    initialize_intrastate(lc3);
-}
-
-/** Reinitializes the variables used during each phase of instruction processing */
-void initialize_intrastate(lc3_p lc3) {
-    lc3->state = STATE_FETCH;
-    lc3->opcode = OPCODE_TRAP;
-    lc3->eval_addr_calculation = 0;
-    lc3->trap_vector = 0;
+    initialize_lc3(lc3);
 }
 
 /** Deallocates the LC3 module */
@@ -97,6 +101,18 @@ void lc3_destroy(lc3_p lc3) {
     alu_destroy(lc3->alu);
     memory_destroy(lc3->memory);
     free(lc3);
+}
+
+/** Compiles a snapshot of the LC3 for debugging and/or display purposes. */
+const lc3_snapshot_t lc3_get_snapshot(lc3_p lc3) {
+    lc3_snapshot_t snapshot;
+    snapshot.starting_address = lc3->starting_address;
+    snapshot.file_loaded = lc3->is_file_loaded;
+    snapshot.is_halted = lc3->is_halted;
+    snapshot.cpu_snapshot = cpu_get_snapshot(lc3->cpu);
+    snapshot.alu_snapshot = alu_get_snapshot(lc3->alu);
+    snapshot.memory_snapshot = memory_get_snapshot(lc3->memory);
+    return snapshot;
 }
 
 void lc3_fetch(lc3_p lc3) {
@@ -124,7 +140,7 @@ void lc3_decode(lc3_p lc3) {
 /** ADD fetch operands */
 void lc3_fetch_op_add(lc3_p lc3) {
     /** Microstate 1*/
-    if (lc3_get_imm_mode(lc3) == TRUE) {
+    if (get_imm_mode(lc3) == TRUE) {
         reg_addr_t sr1 = get_sr1(lc3);
         reg_addr_t sr2 = get_sr2(lc3);
         word_t sr1_data = cpu_get_register(lc3->cpu, sr1);
@@ -157,7 +173,7 @@ void lc3_store_add(lc3_p lc3) {
 /** AND fetch operands */
 void lc3_fetch_op_and(lc3_p lc3) {
     /** Microstate 5 */
-    if (lc3_get_imm_mode(lc3) == TRUE) {
+    if (get_imm_mode(lc3) == TRUE) {
         reg_addr_t sr1 = get_sr1(lc3);
         reg_addr_t sr2 = get_sr2(lc3);
         word_t sr1_data = cpu_get_register(lc3->cpu, sr1);
@@ -207,6 +223,150 @@ void lc3_eval_addr_br(lc3_p lc3) {
     }
 }
 
+/** BR execute */
+void lc3_execute_br(lc3_p lc3) {
+    if (lc3->branch_enabled) {
+        /** Microstate 22 */
+        cpu_set_pc(lc3->cpu, lc3->eval_addr_calculation);
+    }
+}
+
+/** JMP evaluate address */
+void lc3_eval_addr_jmp(lc3_p lc3) {
+    /** Microstate 12 */
+    reg_addr_t base_r = get_sr1(lc3); /* Actually "Base Register" */
+    word_t base_addr = cpu_get_register(lc3->cpu, base_r);
+    lc3->eval_addr_calculation = base_addr;
+}
+
+/** JMP store */
+void lc3_store_jmp(lc3_p lc3) {
+    word_t pc = cpu_get_pc(lc3->cpu);
+    cpu_set_register(lc3->cpu, R7, pc);
+    cpu_set_pc(lc3->cpu, lc3->eval_addr_calculation);
+}
+
+/** JSR evaulate address */
+void lc3_eval_addr_jsr(lc3_p lc3) {
+    /** Microstate 4 */
+    bool_t imm_mode = get_jsr_imm_mode(lc3);
+    if (imm_mode = TRUE) {
+        /** Microstate 21 */
+        pc_offset_11_t offset = get_pc_offset_11(lc3);
+        word_t pc = cpu_get_pc(lc3->cpu);
+        lc3->eval_addr_calculation = pc + offset;
+    } else {
+        reg_addr_t base_r = get_sr1(lc3); /* Actually "Base Register" */
+        word_t base_addr = cpu_get_register(lc3->cpu, base_r);
+        lc3->eval_addr_calculation = base_addr;
+    }
+}
+
+/** JSR store */
+void lc3_store_jsr(lc3_p lc3) {
+    word_t pc = cpu_get_pc(lc3->cpu);
+    cpu_set_register(lc3->cpu, R7, pc);
+    cpu_set_pc(lc3->cpu, lc3->eval_addr_calculation);
+}
+
+/** LD evaluate address */
+void lc3_eval_addr_ld(lc3_p lc3) {
+    /** Microstate 2 */
+    pc_offset_9_t offset = get_pc_offset_9(lc3);
+    word_t pc = cpu_get_pc(lc3->cpu);
+    lc3->eval_addr_calculation = pc + offset;
+}
+
+/** LD fetch operands */
+void lc3_fetch_op_ld(lc3_p lc3) {
+    /** Microstate 2 */
+    cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
+
+    /** Microstate 25 */
+    word_t mar = cpu_get_mar(lc3->cpu);
+    word_t data = memory_get_data(lc3->memory, mar);
+    cpu_set_mdr(lc3->cpu, data);
+}
+
+/** LD store */
+void lc3_store_ld(lc3_p lc3) {
+    /** Microstate 27 */
+    reg_addr_t dr = get_dr(lc3);
+    word_t mdr = cpu_get_mdr(lc3->cpu);
+    cpu_set_register(lc3->cpu, dr, mdr);
+}
+
+/** LDI evaluate address */
+void lc3_eval_addr_ldi(lc3_p lc3) {
+    /** Microstate 10 */
+    pc_offset_9_t offset = get_pc_offset_9(lc3);
+    word_t pc = cpu_get_pc(lc3->cpu);
+    lc3->eval_addr_calculation = pc + offset;
+}
+
+/** LDI fetch operands */
+void lc3_fetch_op_ldi(lc3_p lc3) {
+    /** Microstate 10 */
+    cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
+
+    /** Microstate 21 */
+    word_t mar = cpu_get_mar(lc3->cpu);
+    word_t data = memory_get_data(lc3->memory, mar);
+    cpu_set_mdr(lc3->cpu, data);
+
+    /** Microstate 26 */
+    word_t mdr = cpu_get_mdr(lc3->cpu);
+    cpu_set_mar(lc3->cpu, mdr);
+
+    /** Microstate 25 */
+    mar = cpu_get_mar(lc3->cpu);
+    data = memory_get_data(lc3->memory, mar);
+    cpu_set_mdr(lc3->cpu, data);
+}
+
+/** LDI store */
+void lc3_store_ldi(lc3_p lc3) {
+    /** Microstate 27 */
+    reg_addr_t dr = get_dr(lc3);
+    word_t mdr = cpu_get_mdr(lc3->cpu);
+    cpu_set_register(lc3->cpu, dr, mdr);
+}
+
+/** LDR evaluate address */
+void lc3_eval_addr_ldr(lc3_p lc3) {
+    /** Microstate 6 */
+    reg_addr_t base_r = get_sr1(lc3); /* Actually Base Register */
+    word_t base_addr = cpu_get_register(lc3->cpu, base_r);
+    pc_offset_6_t offset = get_pc_offset_6(lc3);
+    lc3->eval_addr_calculation = base_addr + offset;
+}
+
+/** LDR fetch operands */
+void lc3_fetch_op_ldr(lc3_p lc3) {
+    /** Microstate 6 */
+    cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
+
+    /** Microstate 25 */
+    word_t mar = cpu_get_mar(lc3->cpu);
+    word_t data = memory_get_data(lc3->memory, mar);
+    cpu_set_mdr(lc3->cpu, data);
+}
+
+/** LDR store */
+void lc3_store_ldr(lc3_p lc3) {
+    /** Microstate 27 */
+    reg_addr_t dr = get_dr(lc3);
+    word_t mdr = cpu_get_mdr(lc3->cpu);
+    cpu_set_register(lc3->cpu, dr, mdr);
+}
+
+/** LEA store */
+void lc3_store_lea(lc3_p lc3) {
+    /** Microstate 14 */
+    reg_addr_t dr = get_dr(lc3);
+    cpu_set_register(lc3->cpu, dr, lc3->eval_addr_calculation);
+}
+
 /** NOT fetch operands */
 void lc3_fetch_op_not(lc3_p lc3) {
     /** Microstate 9 */
@@ -229,28 +389,7 @@ void lc3_store_not(lc3_p lc3) {
     cpu_set_register(lc3->cpu, dr, mdr);
 }
 
-void lc3_eval_addr_ld(lc3_p lc3) {
-    /** Microstate 2 */
-    pc_offset_9_t offset = get_pc_offset_9(lc3);
-    word_t pc = cpu_get_pc(lc3->cpu);
-    lc3->eval_addr_calculation = pc + offset;
-}
-
-void lc3_eval_addr_ldi(lc3_p lc3) {
-    /** Microstate 10 */
-    pc_offset_9_t offset = get_pc_offset_9(lc3);
-    word_t pc = cpu_get_pc(lc3->cpu);
-    lc3->eval_addr_calculation = pc + offset;
-}
-
-void lc3_eval_addr_ldr(lc3_p lc3) {
-    /** Microstate 6 */
-    reg_addr_t base_r = get_sr1(lc3); /* Actually Base Register */
-    word_t base_addr = cpu_get_register(lc3->cpu, base_r);
-    pc_offset_6_t offset = get_pc_offset_6(lc3);
-    lc3->eval_addr_calculation = base_addr + offset;
-}
-
+/** ST evaluate address */
 void lc3_eval_addr_st(lc3_p lc3) {
     /** Microstate 3 */
     pc_offset_9_t offset = get_pc_offset_9(lc3);
@@ -258,49 +397,7 @@ void lc3_eval_addr_st(lc3_p lc3) {
     lc3->eval_addr_calculation = pc + offset;
 }
 
-void lc3_eval_addr_sti(lc3_p lc3) {
-    /** Microstate 11 */
-    pc_offset_9_t offset = get_pc_offset_9(lc3);
-    word_t pc = cpu_get_pc(lc3->cpu);
-    lc3->eval_addr_calculation = pc + offset;
-}
-
-void lc3_eval_addr_str(lc3_p lc3) {
-    /** Microstate 7 */
-    reg_addr_t base_r = get_sr1(lc3); /* Actually "Base Register" */
-    word_t base_addr = cpu_get_register(lc3->cpu, base_r);
-    pc_offset_6_t offset = get_pc_offset_6(lc3);
-    lc3->eval_addr_calculation = base_addr + offset;
-}
-
-void lc3_eval_addr_jmp(lc3_p lc3) {
-    /** Microstate 12 */
-    reg_addr_t base_r = get_sr1(lc3); /* Actually "Base Register" */
-    word_t base_addr = cpu_get_register(lc3->cpu, base_r);
-    lc3->eval_addr_calculation = base_addr;
-}
-
-void lc3_eval_addr_jsr(lc3_p lc3) {
-    /** Microstate 4 */
-    bool_t imm_mode = lc3_get_jsr_imm_mode(lc3);
-    if (imm_mode = TRUE) {
-        /** Microstate 21 */
-        pc_offset_11_t offset = get_pc_offset_11(lc3);
-        word_t pc = cpu_get_pc(lc3->cpu);
-        lc3->eval_addr_calculation = pc + offset;
-    } else {
-        reg_addr_t base_r = get_sr1(lc3); /* Actually "Base Register" */
-        word_t base_addr = cpu_get_register(lc3->cpu, base_r);
-        lc3->eval_addr_calculation = base_addr;
-    }
-}
-
-void lc3_fetch_op_trap(lc3_p lc3) {
-    /** Microstate 15 */
-    trap_vector_t vector = get_trap_vector(lc3);
-    cpu_set_mar(lc3->cpu, zext(vector));
-}
-
+/** ST fetch operands */
 void lc3_fetch_op_st(lc3_p lc3) {
     /** Microstate 3 */
     cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
@@ -311,6 +408,23 @@ void lc3_fetch_op_st(lc3_p lc3) {
     cpu_set_mdr(lc3->cpu, sr_data);
 }
 
+/** ST store */
+void lc3_store_st(lc3_p lc3) {
+    /** Microstate 16 */
+    word_t mdr = cpu_get_mdr(lc3->cpu);
+    word_t mar = cpu_get_mar(lc3->cpu);
+    memory_write(lc3->memory, mar, mdr);
+}
+
+/** STI evaluate address */
+void lc3_eval_addr_sti(lc3_p lc3) {
+    /** Microstate 11 */
+    pc_offset_9_t offset = get_pc_offset_9(lc3);
+    word_t pc = cpu_get_pc(lc3->cpu);
+    lc3->eval_addr_calculation = pc + offset;
+}
+
+/** STI fetch operands */
 void lc3_fetch_op_sti(lc3_p lc3) {
     /** Microstate 11 */
     cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
@@ -330,6 +444,24 @@ void lc3_fetch_op_sti(lc3_p lc3) {
     cpu_set_mdr(lc3->cpu, sr_data);
 }
 
+/** STI store */
+void lc3_store_sti(lc3_p lc3) {
+    /** Microstate 16 */
+    word_t mdr = cpu_get_mdr(lc3->cpu);
+    word_t mar = cpu_get_mar(lc3->cpu);
+    memory_write(lc3->memory, mar, mdr);
+}
+
+/** STR evalate address */
+void lc3_eval_addr_str(lc3_p lc3) {
+    /** Microstate 7 */
+    reg_addr_t base_r = get_sr1(lc3); /* Actually "Base Register" */
+    word_t base_addr = cpu_get_register(lc3->cpu, base_r);
+    pc_offset_6_t offset = get_pc_offset_6(lc3);
+    lc3->eval_addr_calculation = base_addr + offset;
+}
+
+/** STR fetch operands */
 void lc3_fetch_op_str(lc3_p lc3) {
     /** Microstate 7 */
     cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
@@ -340,102 +472,26 @@ void lc3_fetch_op_str(lc3_p lc3) {
     cpu_set_mdr(lc3->cpu, sr_data);
 }
 
-void lc3_fetch_op_ld(lc3_p lc3) {
-    /** Microstate 2 */
-    cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
-
-    /** Microstate 25 */
-    word_t mar = cpu_get_mar(lc3->cpu);
-    word_t data = memory_get_data(lc3->memory, mar);
-    cpu_set_mdr(lc3->cpu, data);
-}
-
-void lc3_fetch_op_ldi(lc3_p lc3) {
-    /** Microstate 10 */
-    cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
-
-    /** Microstate 21 */
-    word_t mar = cpu_get_mar(lc3->cpu);
-    word_t data = memory_get_data(lc3->memory, mar);
-    cpu_set_mdr(lc3->cpu, data);
-
-    /** Microstate 26 */
+/** STR store */
+void lc3_store_str(lc3_p lc3) {
+    /** Microstate 16 */
     word_t mdr = cpu_get_mdr(lc3->cpu);
-    cpu_set_mar(lc3->cpu, mdr);
-
-    /** Microstate 25 */
     word_t mar = cpu_get_mar(lc3->cpu);
-    word_t data = memory_get_data(lc3->memory, mar);
-    cpu_set_mdr(lc3->cpu, data);
+    memory_write(lc3->memory, mar, mdr);
 }
 
-void lc3_fetch_op_ldr(lc3_p lc3) {
-    /** Microstate 6 */
-    cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
-
-    /** Microstate 25 */
-    word_t mar = cpu_get_mar(lc3->cpu);
-    word_t data = memory_get_data(lc3->memory, mar);
-    cpu_set_mdr(lc3->cpu, data);
+/** TRAP fetch operands */
+void lc3_fetch_op_trap(lc3_p lc3) {
+    /** Microstate 15 */
+    trap_vector_t vector = get_trap_vector(lc3);
+    cpu_set_mar(lc3->cpu, zext(vector));
 }
 
+/** TRAP execute */
 word_t lc3_execute_trap(lc3_p lc3) {
     /** This is an extra credit opportunity to fully implement trap according to Microstates
      * 15, 28, 30 */
     return cpu_get_mar(lc3->cpu);
-}
-
-void lc3_execute_br(lc3_p lc3) {
-    if (lc3->branch_enabled) {
-        /** Microstate 22 */
-        cpu_set_pc(lc3->cpu, lc3->eval_addr_calculation);
-    }
-}
-
-void lc3_store_ld(lc3_p lc3) {
-    /** Microstate 27 */
-    reg_addr_t dr = get_dr(lc3);
-    word_t mdr = cpu_get_mdr(lc3->cpu);
-    cpu_set_register(lc3->cpu, dr, mdr);
-}
-
-void lc3_store_ld(lc3_p lc3) {
-    /** Microstate 27 */
-    reg_addr_t dr = get_dr(lc3);
-    word_t mdr = cpu_get_mdr(lc3->cpu);
-    cpu_set_register(lc3->cpu, dr, mdr);
-}
-
-void lc3_store_ldi(lc3_p lc3) {
-    /** Microstate 27 */
-    reg_addr_t dr = get_dr(lc3);
-    word_t mdr = cpu_get_mdr(lc3->cpu);
-    cpu_set_register(lc3->cpu, dr, mdr);
-}
-
-void lc3_store_ldr(lc3_p lc3) {
-    /** Microstate 27 */
-    reg_addr_t dr = get_dr(lc3);
-    word_t mdr = cpu_get_mdr(lc3->cpu);
-    cpu_set_register(lc3->cpu, dr, mdr);
-}
-
-void lc3_store_lea(lc3_p lc3) {
-    /** Microstate 14 */
-    reg_addr_t dr = get_dr(lc3);
-    cpu_set_register(lc3->cpu, dr, lc3->eval_addr_calculation);
-}
-
-void lc3_store_jsr(lc3_p lc3) {
-    word_t pc = cpu_get_pc(lc3->cpu);
-    cpu_set_register(lc3->cpu, R7, pc);
-    cpu_set_pc(lc3->cpu, lc3->eval_addr_calculation);
-}
-
-void lc3_store_jmp(lc3_p lc3) {
-    word_t pc = cpu_get_pc(lc3->cpu);
-    cpu_set_register(lc3->cpu, R7, pc);
-    cpu_set_pc(lc3->cpu, lc3->eval_addr_calculation);
 }
 
 /** LC3 portion of the GETC routine */
@@ -489,6 +545,11 @@ void lc3_trap_x25(lc3_p lc3) {
     }
 }
 
+/** Gets the starting address for the PC according to the first line in the loaded hex file */
+word_t lc3_get_starting_address(lc3_p lc3) {
+    return lc3->starting_address;
+}
+
 /** Sets the starting address for the PC according to the first line in the loaded hex file */
 void lc3_set_starting_address(lc3_p lc3, word_t starting_address) {
     lc3->starting_address = starting_address;
@@ -512,13 +573,39 @@ state_t lc3_get_state(lc3_p lc3) { return lc3->state; }
 /** Sets the current microstate of the LC3 */
 void lc3_set_state(lc3_p lc3, state_t state) { lc3->state = state; }
 
-/** Fetches the opcode from the IR */
-opcode_t fetch_opcode(lc3_p lc3) {
-    return (opcode_t)(get_ir() & MASK_OPCODE) >> BITSHIFT_OPCODE;
-}
-
 /** Gets the opcode stored in the LC3 struct */
 opcode_t lc3_get_opcode(lc3_p lc3) { return lc3->opcode; }
+
+/** Gets the PC from the CPU. Used for checking against breakpoints in the main simulator loop
+ */
+word_t lc3_get_pc(lc3_p lc3) { return cpu_get_pc(lc3->cpu); }
+
+/** Sets memory data at the specified address. This is used for loading a file to memory and
+ * editing memory from the Display */
+void lc3_set_memory(lc3_p lc3, word_t address, word_t data) {
+    memory_write(lc3->memory, address, data);
+}
+
+/** Sets LC3 values to default starting values */
+void initialize_lc3(lc3_p lc3) {
+    lc3->starting_address = MEMORY_ADDRESS_MIN;
+    lc3->is_halted = FALSE;
+    lc3->is_file_loaded = FALSE;
+    initialize_intrastate(lc3);
+}
+
+/** Reinitializes the variables used during each phase of instruction processing */
+void initialize_intrastate(lc3_p lc3) {
+    lc3->state = STATE_FETCH;
+    lc3->opcode = OPCODE_TRAP;
+    lc3->eval_addr_calculation = 0;
+    lc3->trap_vector = 0;
+}
+
+/** Fetches the opcode from the IR */
+opcode_t fetch_opcode(lc3_p lc3) {
+    return (opcode_t)(cpu_get_ir(lc3->cpu) & MASK_OPCODE) >> BITSHIFT_OPCODE;
+}
 
 /** Fetches the destination register from the IR */
 reg_addr_t get_dr(lc3_p lc3) {
@@ -539,16 +626,18 @@ reg_addr_t get_sr2(lc3_p lc3) {
 }
 
 /** Fetches bit 5 (immediate mode flag for AND and ADD) from the IR */
-bool_t lc3_get_imm_mode(lc3_p lc3) {
+bool_t get_imm_mode(lc3_p lc3) {
     word_t masked_ir = cpu_get_ir(lc3->cpu) & MASK_BIT5;
     return (bool_t)(masked_ir >> BITSHIFT_BIT5);
 }
 
-bool_t lc3_get_jsr_imm_mode(lc3_p lc3) {
+/** Fetches the immediate bits from the IR */
+bool_t get_jsr_imm_mode(lc3_p lc3) {
     word_t masked_ir = cpu_get_ir(lc3->cpu) & MASK_BIT11;
     return (bool_t)(masked_ir >> BITSHIFT_BIT11);
 }
 
+/** Fetches the NZP bits from the IR */
 cc_t get_nzp(lc3_p lc3) {
     word_t masked_ir = cpu_get_ir(lc3->cpu) & MASK_NZP;
     return (cc_t)(masked_ir >> BITSHIFT_NZP);

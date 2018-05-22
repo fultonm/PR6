@@ -7,7 +7,6 @@
  * operations.
  */
 
-
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +15,14 @@
 #include "display.h"
 #include "lc3.h"
 
-FILE *open_file();
+/** The main instruction cycle control flow */
+void controller(lc3_p, display_p);
+
+/** Coordinates TRAP functionality between the Display and LC3 */
+void trap(display_p, lc3_p, word_t);
+
+/** Opens a file with the given file name */
+FILE *open_file(char *);
 
 /*
  * Main method for the LC-3 Emulator.
@@ -26,72 +32,79 @@ FILE *open_file();
  * input "0x1694", that hexadecimal value will be stored into the instruction
  * register (IR) and can be thought of in binary as 0001 0110 1001 0100, which
  * (based on the four highest-order bits) is an ADD instruction for the LC-3
- * (from its instruction set).
- */
+ * (from its instruction set). */
 int main(int argc, char *argv[]) {
-    /* Creating and initializing a LC3 object. */
+    /** Create and initialze the LC3 object */
     lc3_p lc3 = lc3_create();
 
-    // If there is an argument, attempt to used the first as a file name.
-    char *fileName = argv[1]; // char *fileName = "./hex/HW3.hex";
-    if (fileName != NULL) {
-        load_file_to_memory(cpu, open_file2(fileName));
-    }
-
+    /** Create and initialize the Display object */
     display_p disp = display_create();
 
-    int monitor_return = display_monitor_loop(cpu);
+    // If there is an argument, attempt to used the first as a file name.
+    // char *fileName = "./hex/HW3.hex";
+    if (argc > 1) {
+        
+        load_file_to_memory(lc3, open_file(argv[1]));
+    }
+
+    /** Create a snapshot of LC3's components' current parameters and pass this struct by value
+     * into the Display component for displaying. This ensures the display only receieves a
+     * copy of all values in the LC3 and makes it impossible for Display to modify the LC3
+     * without calling the appropriate methods. */
+    lc3_snapshot_t machine_snapshot = lc3_get_snapshot(lc3);
+    display_loop_result_t result = display_loop(disp, machine_snapshot);
 
     /* If the user has selected MONITOR_STEP, then lets continue executing the
      * LC-3 */
-    while (monitor_return != MONITOR_QUIT) {
-        switch (monitor_return) {
+    while (result.user_action != MONITOR_QUIT) {
+        switch (result.user_action) {
         case MONITOR_UPDATE:
             /* No operations this loop, just do the display monitor loop again */
             break;
 
         case MONITOR_LOAD:
-            load_file_to_memory(cpu, open_file());
+            //load_file_to_memory(lc3, open_file(fileName));
             break;
 
         case MONITOR_STEP:
             if (lc3_is_halted(lc3) == FALSE) {
-                controller(cpu);
+                controller(lc3, disp);
             }
             break;
         case MONITOR_RUN:
             if (lc3_is_halted(lc3) == FALSE) {
                 do {
-                    controller(cpu);
-                } while (lc3_is_halted(lc3) == FALSE && !has_breakpoint[cpu->pc]);
+                    controller(lc3, disp);
+                } while (lc3_is_halted(lc3) == FALSE &&
+                         display_has_breakpoint(disp, lc3_get_pc(lc3)) == FALSE);
             }
         }
-        monitor_return = display_monitor_loop(cpu);
+        result = display_loop(disp, lc3_get_snapshot(lc3));
     }
 
     /* Memory cleanup. */
-    display_monitor_destroy();
-    free(cpu);
+    display_destroy(disp);
+    lc3_destroy(lc3);
 
     return 0;
 }
 
 /*
  * The controller method of the LC-3. This contains much of the complete
- * instruction cycle of the LC-3.
- */
-void controller(lc3_p lc3) {
+ * instruction cycle of the LC-3 */
+void controller(lc3_p lc3, display_p disp) {
     /** This is set to true at the end of the STORE phase and allows execution control to be
      * passed back to the main loop */
     bool_t is_cycle_complete = FALSE;
 
-    /* Ensuring that CPU pointer being passed into the controller is valid. */
+    /** Ensuring that CPU pointer being passed into the controller is valid. */
     if (!lc3) {
         exit(1);
     }
 
-    /* Beginning instruction cycle. */
-    set_state(STATE_FETCH);
+    /** Beginning instruction cycle. */
+    lc3_set_state(lc3, STATE_FETCH);
+
     while (!is_cycle_complete) {
         switch (lc3_get_state(lc3)) {
         /* The first state of the instruction cycle, the "fetch" state. */
@@ -197,7 +210,7 @@ void controller(lc3_p lc3) {
                 lc3_execute_not(lc3);
                 break;
             case OPCODE_TRAP:
-                trap(lc3, lc3_execute_trap(lc3));
+                trap(disp, lc3, lc3_execute_trap(lc3));
                 break;
             case OPCODE_BR:
                 lc3_execute_br(lc3);
@@ -253,7 +266,7 @@ void controller(lc3_p lc3) {
  * This function that determines and executes the appropriate trap routine based
  * on the trap vector passed.
  */
-void trap(lc3_p lc3, word_t vector) {
+void trap(display_p disp, lc3_p lc3, word_t vector) {
     char c;
 
     switch (vector) {
@@ -263,19 +276,19 @@ void trap(lc3_p lc3, word_t vector) {
         break;
     case TRAP_VECTOR_X20:
         /** GETC */
-        c = display_monitor_get_input();
+        c = display_get_input(disp);
         lc3_trap_x20(lc3, c);
         break;
     case TRAP_VECTOR_X21:
         /** OUT */
         c = lc3_trap_x21(lc3);
-        display_monitor_print_output(c);
+        display_print_output(disp, c);
         break;
     case TRAP_VECTOR_X22:
         /** PUTS */
         c = lc3_trap_x22(lc3);
         while (c != '\0') {
-            display_monitor_print_output(c);
+            display_print_output(disp, c);
             c = lc3_trap_x22(lc3);
         }
         break;
@@ -285,63 +298,32 @@ void trap(lc3_p lc3, word_t vector) {
 /*
  * This function will allow the opening of files
  */
-FILE *open_file() {
+FILE *open_file(char *file_name) {
     /* Attempt to open file. If file isn't found or otherwise null, allow user to
        press enter to return to main program of the menu. */
     FILE *input_file_pointer;
-    input_file_pointer = fopen(load_file_input, "r");
-    if (input_file_pointer == NULL) {
-        /*
-         * Error checking is hard to do with this file structure... How can we get
-         * an error message back to the display_monitor? We would want an error
-         * message to appear right under the user selection options.
-         */
-    }
+    input_file_pointer = fopen(file_name, "r");
     return input_file_pointer;
 }
-
-/*
- * This function will allow the opening of files
- */
-FILE *open_file2(char *theFileName) {
-    /* Attempt to open file. If file isn't found or otherwise null, allow user to
-    press enter to return to main program of the menu. */
-    FILE *input_file_pointer;
-    input_file_pointer = fopen(theFileName, "r");
-    if (input_file_pointer == NULL) {
-        // TODO Should display a message and re-prompt the user.
-    }
-    return input_file_pointer;
-}
-
 /*
  * This function allows for the loading of hex files into memory.
  */
-void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer) {
+void load_file_to_memory(lc3_p lc3, FILE *file) {
     char line[8];
-    fgets(line, sizeof(line), input_file_pointer);
+    fgets(line, sizeof(line), file);
 
-    /*
-     * Subtract 0x3000 from first hex value in file to be starting memory location
-     * Note: This requires the first line of the hex file to not be less than
-     * x3000 since this is an unsigned short.
-     *
-     * IDEA: Create offset variable to hold difference between given start
-     * location and x3000? This could be positive or negative value? Then compute
-     * from this value.
-     */
-    unsigned short first_address = strtol(line, NULL, 16);
-    starting_address = first_address;
+    /** Set the starting address */
+    word_t data = strtol(line, NULL, 16);
+    lc3_set_starting_address(lc3, data);
 
     /* Read through file line by line and store to CPU memory. */
-    unsigned short address;
-    int result = 1;
     int i = 0;
-    while (fscanf(input_file_pointer, "%hx", &address) != EOF) {
-        memory[i] = address;
+    while (fscanf(file, "%hx", &data) != EOF) {
+        lc3_set_memory(lc3, lc3_get_starting_address(lc3) + i, data);
         i += 1;
     }
-    file_loaded = 1;
+    
+    if (lc3_has_file_loaded(lc3) == FALSE) {
+        lc3_toggle_file_loaded(lc3);
+    }
 }
-
-

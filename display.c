@@ -83,8 +83,7 @@ void clear_line(int line);
 void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
 void print_window_titles();
-unsigned int get_mem_address(char *);
-unsigned int get_mem_data(char *);
+word_t get_word_from_string(char *);
 
 /** Ensure these are at least as big (or equal to) the actual vaues in the CPU.
  * These have +1 because in addition to the actual string representing data in
@@ -99,7 +98,7 @@ display_p display_create() {
 /** Frees all memory associated with Ncurses and prepares the LC-3 simulator for
  * a complete shutdown. */
 int display_destroy(display_p disp) {
-    display_monitor_free();
+    free_display(disp);
     int i;
     for (i = 0; i < 3; i++) {
         delwin(disp->menu_windows[i]);
@@ -172,6 +171,12 @@ int free_display(display_p disp) {
     }
 
     return 0;
+}
+
+/** Returns whether the specified address has a breakpoint set */
+bool_t display_has_breakpoint(display_p disp, word_t address) {
+    int bp_index = get_index_from_address(address);
+    return disp->breakpoints[bp_index];
 }
 
 /** Prints a message pertaining to a user operation. It could be a prompt if the
@@ -329,83 +334,82 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
         /* If this memory location has a breakpoint we will display a small square
          * next to it. */
         if (disp->breakpoints[i]) {
-            sprintf(disp->mem_strings[i].description, "x%04X [x]",
-                    memory_get_data(memory, lc3->starting_address + i));
+            sprintf(disp->mem_strings[i].description, "x%04X [x]", lc3_snapshot.memory_snapshot.data[i]);
         } else {
-            sprintf(disp->mem_strings[i].description, "x%04X    ", memory_get_data(0x3000));
+            sprintf(disp->mem_strings[i].description, "x%04X    ", lc3_snapshot.memory_snapshot.data[i]);
         }
 
-        menu_list_items[INDEX_MEM][i] =
-            new_item(mem_strings[i].label, mem_strings[i].description);
+        disp->menu_list_items[INDEX_MEM][i] =
+            new_item(disp->mem_strings[i].label, disp->mem_strings[i].description);
     }
-    menu_list_items[INDEX_MEM][i] = new_item((char *)NULL, (char *)NULL);
+    disp->menu_list_items[INDEX_MEM][i] = new_item((char *)NULL, (char *)NULL);
 
     /* Create items for the CPU */
     sprintf(disp->cpu_strings[0].label, "PC:");
-    sprintf(disp->cpu_strings[0].description, "x%04X", cpu_get_pc(cpu));
+    sprintf(disp->cpu_strings[0].description, "x%04X", lc3_snapshot.cpu_snapshot.pc);
     sprintf(disp->cpu_strings[1].label, "IR:");
-    sprintf(disp->cpu_strings[1].description, "x%04X", cpu_get_ir(cpu));
+    sprintf(disp->cpu_strings[1].description, "x%04X", lc3_snapshot.cpu_snapshot.ir);
     sprintf(disp->cpu_strings[2].label, "ALU A:");
-    sprintf(disp->cpu_strings[2].description, "x%04X", );
+    sprintf(disp->cpu_strings[2].description, "x%04X", lc3_snapshot.alu_snapshot.a);
     sprintf(disp->cpu_strings[3].label, "ALU B:");
-    sprintf(disp->cpu_strings[3].description, "x%04X", lc3->cpu->alu_b);
+    sprintf(disp->cpu_strings[3].description, "x%04X", lc3_snapshot.alu_snapshot.b);
     sprintf(disp->cpu_strings[4].label, "MAR:");
-    sprintf(disp->cpu_strings[4].description, "x%04X", lc3->cpu->mar);
+    sprintf(disp->cpu_strings[4].description, "x%04X", lc3_snapshot.cpu_snapshot.mar);
     sprintf(disp->cpu_strings[5].label, "MDR:");
-    sprintf(disp->cpu_strings[5].description, "x%04X", lc3->cpu->mdr);
+    sprintf(disp->cpu_strings[5].description, "x%04X", lc3_snapshot.cpu_snapshot.mdr);
     sprintf(disp->cpu_strings[6].label, "CC N:");
-    sprintf(disp->cpu_strings[6].description, "%d", lc3->cpu->ccN);
+    sprintf(disp->cpu_strings[6].description, "%d", lc3_snapshot.cpu_snapshot.cc_n);
     /* Inserting a blank one so the CC stuff looks better */
-    sprintf(cpu_strings[7].label, " ");
-    sprintf(cpu_strings[7].description, " ");
-    sprintf(cpu_strings[8].label, "CC Z:");
-    sprintf(cpu_strings[8].description, "%d", lc3->cpu->ccZ);
-    sprintf(cpu_strings[9].label, "CC P:");
-    sprintf(cpu_strings[9].description, "%d", lc3->cpu->ccP);
+    sprintf(disp->cpu_strings[7].label, " ");
+    sprintf(disp->cpu_strings[7].description, " ");
+    sprintf(disp->cpu_strings[8].label, "CC Z:");
+    sprintf(disp->cpu_strings[8].description, "%d", lc3_snapshot.cpu_snapshot.cc_z);
+    sprintf(disp->cpu_strings[9].label, "CC P:");
+    sprintf(disp->cpu_strings[9].description, "%d", lc3_snapshot.cpu_snapshot.cc_p);
 
-    for (i = 0; i < NUM_CPU_ELEMENTS; i++) {
-        menu_list_items[CPU][i] = new_item(cpu_strings[i].label, cpu_strings[i].description);
+    for (i = 0; i < CPU_ELEMENTS_COUNT; i++) {
+        disp->menu_list_items[CPU][i] = new_item(disp->cpu_strings[i].label, disp->cpu_strings[i].description);
     }
-    menu_list_items[CPU][i] = new_item((char *)NULL, (char *)NULL);
+    disp->menu_list_items[CPU][i] = new_item((char *)NULL, (char *)NULL);
 
     /* Create menu instances from the lists */
     for (i = 0; i < 3; i++) {
-        menus[i] = new_menu((ITEM **)menu_list_items[i]);
+        disp->menus[i] = new_menu((ITEM **)(disp->menu_list_items[i]));
     }
 
     /* Set the initially active window */
-    keypad(menu_windows[active_window], TRUE);
+    keypad(disp->menu_windows[disp->active_window], TRUE);
 
     /* Set menus to their windows */
     for (i = 0; i < 3; i++) {
-        set_menu_win(menus[i], menu_windows[i]);
+        set_menu_win(disp->menus[i], disp->menu_windows[i]);
     }
 
     /* The the menu sub ??? and its format menu_format is number of rows, columns
      * for the list's visible contents and scrolls the rest of the list. */
-    set_menu_sub(menus[INDEX_REG], derwin(menu_windows[INDEX_REG], REG_PANEL_HEIGHT - 4,
+    set_menu_sub(disp->menus[INDEX_REG], derwin(disp->menu_windows[INDEX_REG], REG_PANEL_HEIGHT - 4,
                                           REG_PANEL_WIDTH - 4, 3, 1));
-    set_menu_format(menus[INDEX_REG], REG_PANEL_HEIGHT - 4, 1);
+    set_menu_format(disp->menus[INDEX_REG], REG_PANEL_HEIGHT - 4, 1);
     /* Memories... */
-    set_menu_sub(menus[INDEX_MEM], derwin(menu_windows[INDEX_MEM], MEM_PANEL_HEIGHT - 4,
+    set_menu_sub(disp->menus[INDEX_MEM], derwin(disp->menu_windows[INDEX_MEM], MEM_PANEL_HEIGHT - 4,
                                           MEM_PANEL_WIDTH - 4, 3, 1));
-    set_menu_format(menus[INDEX_MEM], MEM_PANEL_HEIGHT - 4, 1);
+    set_menu_format(disp->menus[INDEX_MEM], MEM_PANEL_HEIGHT - 4, 1);
     /* CPU... */
-    set_menu_sub(menus[CPU],
-                 derwin(menu_windows[CPU], CPU_PANEL_HEIGHT - 4, CPU_PANEL_WIDTH - 4, 3, 1));
-    set_menu_format(menus[CPU], MEM_PANEL_HEIGHT - 4, 2);
+    set_menu_sub(disp->menus[CPU],
+                 derwin(disp->menu_windows[CPU], CPU_PANEL_HEIGHT - 4, CPU_PANEL_WIDTH - 4, 3, 1));
+    set_menu_format(disp->menus[CPU], MEM_PANEL_HEIGHT - 4, 2);
 
     /* Set menu mark to the string " * " */
     for (i = 0; i < 3; i++) {
-        set_menu_mark(menus[i], " * ");
+        set_menu_mark(disp->menus[i], " * ");
     }
 
-    print_window_titles();
+    print_window_titles(disp);
 
     /* Post the menus */
     for (i = 0; i < 3; i++) {
-        post_menu(menus[i]);
-        wrefresh(menu_windows[i]);
+        post_menu(disp->menus[i]);
+        wrefresh(disp->menu_windows[i]);
     }
 
     /* Print labels on the window */
@@ -417,41 +421,41 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     mvprintw(LINES - 1, 0, "Arrow Keys to navigate (9 to Exit)");
     attroff(COLOR_PAIR(2));
 
-    restore_menu_indicies();
+    restore_menu_indicies(disp);
 }
 
 /** The main logic loop for the debug monitor. Listens for user keystrokes and
  * performs debugging operations */
-display_loop_result_t display_loop(display_p disp) {
+display_loop_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     /* Set selected item in memory to be current PC */
-    set_current_item(menus[INDEX_MEM], menu_list_items[INDEX_MEM][lc3->cpu->pc]);
-    display_monitor_update(lc3);
+    set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][lc3_snapshot.cpu_snapshot.pc]);
+    display_update(disp, lc3_snapshot);
 
-    /* Input array used for 5) Show Mem, 8) Set/Unset breakpoint */
-    char mem_addr_input[6];
-    char mem_data_input[6];
-    unsigned short mem_addr_index;
-    unsigned short mem_data;
+    /* Input vars used for 5) Show Mem, 6)Edit Mem, 8) Set/Unset breakpoint */
+    char word_input_raw[6];
+    word_t word_input;
+    /* Secondary input vars used for 6) Edit Mem to specify the data to insert at the address */
+    char word_data_input_raw[6];
+    word_t word_data_input;
 
     /** This variable is used to return information about the user's selection
      * back to the LC-3. We load it with whether the current PC is a breakpoint. */
-    display_loop_result_t monitor_return = {MONITOR_UPDATE, breakpoints[lc3->cpu->pc]};
+    display_loop_result_t monitor_return = {MONITOR_UPDATE, disp->breakpoints[lc3_snapshot.cpu_snapshot.pc]};
 
-    if (lc3->is_halted) {
+    if (lc3_snapshot.is_halted) {
         print_message(MSG_CPU_HALTED, NULL);
     }
 
-    if (lc3->)
-
+    int c;
         /* If the user selected 9) to quit this while loop will exit */
-        while ((c = wgetch(menu_windows[active_window])) != 57) {
+        while ((c = wgetch(disp->menu_windows[disp->active_window])) != 57) {
             switch (c) {
             case 9:
                 /*　User pressed Tab to change active window */
-                active_window++;
-                active_window = active_window % 3;
-                keypad(menu_windows[active_window], TRUE);
-                print_window_titles();
+                disp->active_window++;
+                disp->active_window = disp->active_window % 3;
+                keypad(disp->menu_windows[disp->active_window], TRUE);
+                print_window_titles(disp);
                 break;
             case 49:
                 /* User selected 1) to load a file */
@@ -469,10 +473,10 @@ display_loop_result_t display_loop(display_p disp) {
                 break;
             case 51:
                 /* User selected 3) to step through code */
-                if (!lc3->file_loaded) {
+                if (lc3_snapshot.file_loaded == FALSE) {
                     print_message(MSG_STEP_NO_FILE, NULL);
                     monitor_return.user_action = MONITOR_NO_ACTION;
-                } else if (lc3->is_halted) {
+                } else if (lc3_snapshot.is_halted) {
                     print_message(MSG_CPU_HALTED_STEP, NULL);
                     monitor_return.user_action = MONITOR_NO_ACTION;
                 } else {
@@ -482,10 +486,10 @@ display_loop_result_t display_loop(display_p disp) {
                 break;
             case 52:
                 /* User selected 4) to run code */
-                if (!lc3->file_loaded) {
+                if (lc3_snapshot.file_loaded) {
                     print_message(MSG_RUN_NO_FILE, NULL);
                     monitor_return.user_action = MONITOR_NO_ACTION;
-                } else if (lc3->is_halted) {
+                } else if (lc3_snapshot.is_halted) {
                     print_message(MSG_CPU_HALTED_RUN, NULL);
                     monitor_return.user_action = MONITOR_NO_ACTION;
                 } else {
@@ -500,14 +504,14 @@ display_loop_result_t display_loop(display_p disp) {
                  *  then turn it back on after capturing file name input */
                 move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_DISPLAY_MEM) + 4);
                 echo();
-                getstr(mem_addr_input);
+                getstr(word_input_raw);
                 noecho();
-                mem_addr_index = get_mem_address(mem_addr_input);
-                set_current_item(menus[INDEX_MEM], menu_list_items[INDEX_MEM][mem_addr_index]);
+                word_input = get_word_from_string(word_input_raw);
+                set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
                 monitor_return.user_action = MONITOR_NO_ACTION;
                 break;
             case 54:
-                if (!lc3->file_loaded) {
+                if (lc3_snapshot.file_loaded) {
                     print_message(MSG_EDIT_MEM_NO_FILE, NULL);
                     monitor_return.user_action = MONITOR_NO_ACTION;
                 }
@@ -517,24 +521,25 @@ display_loop_result_t display_loop(display_p disp) {
                  *  then turn it back on after capturing address */
                 move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_PPT_ADDR) + 4);
                 echo();
-                getstr(mem_addr_input);
+                getstr(word_input_raw);
                 noecho();
-                mem_addr_index = get_mem_address(mem_addr_input);
-                print_message(MSG_EDIT_MEM_PPT_DATA, mem_addr_input);
+                word_input = get_word_from_string(word_input_raw);
+                print_message(MSG_EDIT_MEM_PPT_DATA, word_input_raw);
                 /** Move the cursor, turn on echo mode so the user can see their input
                  *  then turn it back on after capturing the data */
                 move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
-                     strlen(MSG_EDIT_MEM_PPT_DATA) + strlen(mem_addr_input) + 4);
+                     strlen(MSG_EDIT_MEM_PPT_DATA) + strlen(word_input_raw) + 4);
                 echo();
-                getstr(mem_data_input);
+                getstr(word_data_input_raw);
                 noecho();
-                mem_data = get_mem_data(mem_data_input);
-                memory[mem_addr_index] = mem_data;
+                word_data_input = get_word_from_string(word_data_input_raw);
+                /** TODO: This will not be the correct thing to do here. We need a method in slc3 and ultimately lc3 to set memory. */
+                /*lc3_snapshot.memory_snapsshot.data[mem_addr_index] = mem_data;*/
                 monitor_return.user_action = MONITOR_UPDATE;
                 break;
             case 56:
                 /* User selected 8) to set/unset a breakpoint */
-                if (!lc3->file_loaded) {
+                if (lc3_snapshot.file_loaded == FALSE) {
                     print_message(MSG_SET_UNSET_BRKPT_NO_FILE, NULL);
                     monitor_return.user_action = MONITOR_NO_ACTION;
                 } else {
@@ -544,38 +549,38 @@ display_loop_result_t display_loop(display_p disp) {
                     move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
                          strlen(MSG_SET_UNSET_BRKPT) + 4);
                     echo();
-                    getstr(mem_addr_input);
+                    getstr(word_input_raw);
                     noecho();
-                    mem_addr_index = get_mem_address(mem_addr_input);
-                    breakpoints[mem_addr_index] = !breakpoints[mem_addr_index];
-                    save_menu_indicies();
-                    display_monitor_update(lc3);
-                    restore_menu_indicies();
+                    word_input = get_word_from_string(word_input_raw);
+                    disp->breakpoints[get_index_from_address(word_input)] = !disp->breakpoints[get_index_from_address(word_input)];
+                    save_menu_indicies(disp);
+                    display_update(disp, lc3_snapshot);
+                    restore_menu_indicies(disp);
                 }
                 monitor_return.user_action = MONITOR_UPDATE;
                 break;
             case KEY_DOWN:
-                menu_driver(menus[active_window], REQ_DOWN_ITEM);
+                menu_driver(disp->menus[disp->active_window], REQ_DOWN_ITEM);
                 monitor_return.user_action = MONITOR_NO_ACTION;
                 break;
             case KEY_UP:
-                menu_driver(menus[active_window], REQ_UP_ITEM);
+                menu_driver(disp->menus[disp->active_window], REQ_UP_ITEM);
                 monitor_return.user_action = MONITOR_NO_ACTION;
                 break;
             case KEY_LEFT:
-                menu_driver(menus[active_window], REQ_LEFT_ITEM);
+                menu_driver(disp->menus[disp->active_window], REQ_LEFT_ITEM);
                 monitor_return.user_action = MONITOR_NO_ACTION;
                 break;
             case KEY_RIGHT:
-                menu_driver(menus[active_window], REQ_RIGHT_ITEM);
+                menu_driver(disp->menus[disp->active_window], REQ_RIGHT_ITEM);
                 monitor_return.user_action = MONITOR_NO_ACTION;
                 break;
             case KEY_NPAGE:
-                menu_driver(menus[active_window], REQ_SCR_DPAGE);
+                menu_driver(disp->menus[disp->active_window], REQ_SCR_DPAGE);
                 monitor_return.user_action = MONITOR_NO_ACTION;
                 break;
             case KEY_PPAGE:
-                menu_driver(menus[active_window], REQ_SCR_UPAGE);
+                menu_driver(disp->menus[disp->active_window], REQ_SCR_UPAGE);
                 monitor_return.user_action = MONITOR_NO_ACTION;
                 break;
             }
@@ -596,16 +601,10 @@ display_loop_result_t display_loop(display_p disp) {
     return monitor_return;
 }
 
-unsigned int get_mem_address(char *mem_string) {
+word_t get_word_from_string(char *mem_string) {
     /* A little bit of edge case handling...
      * x3002 + strlen("x3002") - 4 = 3002
      * 3002 + strlen("3002") - 4 = 3002 */
     unsigned short address = strtol(mem_string + strlen(mem_string) - 4, NULL, 16);
-    return translate_memory_address(address);
-}
-
-unsigned int get_mem_data(char *mem_string) {
-    /* x3002 + strlen("x3002") - 4 = 3002
-     * 3002 + strlen("3002") - 4 = 3002 */
-    return strtol(mem_string + strlen(mem_string) - 4, NULL, 16);
+    return (word_t)address;
 }

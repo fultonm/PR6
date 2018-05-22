@@ -10,6 +10,7 @@
 #ifndef SLC3_H
 #define SLC3_H
 
+#include <stdio.h>
 #include "global.h"
 #include "lc3.h"
 
@@ -40,21 +41,9 @@
 #define TRAP_VECTOR_X22 0x22
 #define TRAP_VECTOR_X25 0x25
 
-
-
 /* Function Definitions */
-void controller(lc3_p);
-void lc3_init(lc3_p);
-void int16_to_binary_IR_contents(int *, unsigned short);
-void trap(unsigned short, lc3_p);
-void set_condition_code(int, lc3_p);
-void print_binary_form(unsigned int);
 void handle_user_input(lc3_p);
-void display_display_monitor(lc3_p);
 void load_file_to_memory(lc3_p, FILE *);
-short SEXT(unsigned short, int);
-void setCC(unsigned short, lc3_p);
-bool_t branchEnabled(unsigned short, cpu_p);
 FILE *open_file2(char *);
 
 #endif

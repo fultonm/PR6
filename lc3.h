@@ -1,4 +1,8 @@
 
+
+#ifndef LC3_H
+#define LC3_H
+
 #include "global.h"
 
 /** FSM microstates */
@@ -62,11 +66,8 @@
 
 typedef struct lc3_t *lc3_p;
 
-typedef struct
-
-    /** Allocates and initializes a new LC3 module */
-    lc3_p
-    lc3_create();
+/** Allocates and initializes a new LC3 module */
+lc3_p lc3_create();
 
 /** Reinitializes the LC3 module without reallocation */
 void lc3_reset(lc3_p);
@@ -74,15 +75,16 @@ void lc3_reset(lc3_p);
 /** Deallocates the LC3 module */
 void lc3_destroy(lc3_p);
 
-/** Fetches bit 5 (immediate mode flag for AND and ADD) from the IR */
-bool_t lc3_get_imm_mode(lc3_p lc3);
+/** Gets a snapshot of the LC3 data for debugging or display purposes */
+const lc3_snapshot_t lc3_get_snapshot(lc3_p);
 
-/** Sets the starting address for the PC according to the first line in the loaded hex file */
-void lc3_set_starting_address(lc3_p, word_t starting_address);
+/** Gets/sets the starting address for the PC according to the first line in the loaded hex file */
+word_t lc3_get_starting_address(lc3_p);
+void lc3_set_starting_address(lc3_p, word_t);
 
 /** Checks/toggles whether the LC3 is halted */
-bool_t lc3_is_halted(lc3_p);
-void lc3_toggle_halted(lc3_p);
+bool_t lc3_is_halted(lc3_p lc3);
+void lc3_toggle_halted(lc3_p lc3);
 
 /** Checks/toggles whether the LC3 has a file loaded */
 bool_t lc3_has_file_loaded(lc3_p);
@@ -90,7 +92,100 @@ void lc3_toggle_file_loaded(lc3_p);
 
 /** Gets/sets the current microstate of the LC3 */
 state_t lc3_get_state(lc3_p);
-void lc3_set_state(lc3_p, state_t state);
+void lc3_set_state(lc3_p, state_t);
 
 /** Gets the opcode currently being processed */
 opcode_t lc3_get_opcode(lc3_p);
+
+/** Gets the current PC. This is needed for the Display/debugger to check if the user is
+ * requesting a breakpoint at this location */
+word_t lc3_get_pc(lc3_p);
+
+/** Sets memory data at the specified address. This is used for loading a file to memory and
+ * editing memory from the Display */
+void lc3_set_memory(lc3_p, word_t address, word_t data);
+
+/** Fetch instruction cycle */
+void lc3_fetch(lc3_p);
+
+/** Decode instruction cycle */
+void lc3_decode(lc3_p);
+
+/** The remaining instruction cycles are grouped by operation */
+/** ADD */
+void lc3_fetch_op_add(lc3_p);
+void lc3_execute_add(lc3_p);
+void lc3_store_add(lc3_p);
+
+/** AND */
+void lc3_fetch_op_and(lc3_p);
+void lc3_execute_and(lc3_p);
+void lc3_store_and(lc3_p);
+
+/** BR */
+void lc3_eval_addr_br(lc3_p);
+void lc3_execute_br(lc3_p);
+
+/** JMP */
+void lc3_eval_addr_jmp(lc3_p);
+void lc3_store_jmp(lc3_p);
+
+/** JSR */
+void lc3_eval_addr_jsr(lc3_p);
+void lc3_store_jsr(lc3_p);
+
+/** LD */
+void lc3_eval_addr_ld(lc3_p);
+void lc3_fetch_op_ld(lc3_p);
+void lc3_store_ld(lc3_p);
+
+/** LDI */
+void lc3_eval_addr_ldi(lc3_p);
+void lc3_fetch_op_ldi(lc3_p);
+void lc3_store_ldi(lc3_p);
+
+/** LDR */
+void lc3_eval_addr_ldr(lc3_p);
+void lc3_fetch_op_ldr(lc3_p);
+void lc3_store_ldr(lc3_p);
+
+/** LEA */
+void lc3_store_lea(lc3_p);
+
+/** NOT */
+void lc3_fetch_op_not(lc3_p);
+void lc3_execute_not(lc3_p);
+void lc3_store_not(lc3_p);
+
+/** ST */
+void lc3_eval_addr_st(lc3_p);
+void lc3_fetch_op_st(lc3_p);
+void lc3_store_st(lc3_p lc3);
+
+/** STI */
+void lc3_eval_addr_sti(lc3_p);
+void lc3_fetch_op_sti(lc3_p);
+void lc3_store_sti(lc3_p lc3);
+
+/** STR */
+void lc3_eval_addr_str(lc3_p);
+void lc3_fetch_op_str(lc3_p);
+void lc3_store_str(lc3_p lc3);
+
+/** TRAP */
+void lc3_fetch_op_trap(lc3_p);
+word_t lc3_execute_trap(lc3_p);
+
+/** LC3 portion of the GETC routine */
+void lc3_trap_x20(lc3_p, char);
+
+/** LC3 portion of the OUT routine */
+char lc3_trap_x21(lc3_p);
+
+/** LC3 portion of the PUTS routine */
+char lc3_trap_x22(lc3_p);
+
+/** LC3 HALT routine */
+void lc3_trap_x25(lc3_p);
+
+#endif

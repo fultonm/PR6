@@ -1,3 +1,6 @@
+#ifndef CPU_H
+#define CPU_H
+
 #include "global.h"
 
 typedef struct cpu_t *cpu_p;
@@ -10,6 +13,9 @@ void cpu_reset(cpu_p);
 
 /** Deallocates the cpu module */
 void cpu_destroy(cpu_p);
+
+/** Takes a snapshot of the CPU data for debugging or display purposes */
+cpu_snapshot_t cpu_get_snapshot(cpu_p cpu);
 
 /** Fetches the data at the specified regiser */
 word_t cpu_get_register(cpu_p, reg_addr_t reg);
@@ -55,3 +61,5 @@ word_t cpu_get_mdr(cpu_p);
 
 /** Sets the MDR */
 void cpu_set_mdr(cpu_p, word_t data);
+
+#endif

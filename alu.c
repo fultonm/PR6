@@ -1,3 +1,6 @@
+
+
+#include <stdlib.h>
 #include "global.h"
 #include "slc3.h"
 
@@ -7,22 +10,18 @@ typedef struct alu_t {
     word_t result;
 } alu_t, *alu_p;
 
+/** Sets the ALU fields to default values */
+void initialize_alu(alu_p);
+
 /** Allocates and initializes a new ALU module */
 alu_p alu_create() {
     alu_p alu = calloc(1, sizeof(alu_t));
-    initialize(alu);
+    initialize_alu(alu);
     return alu;
 }
 
 /** Reinitializes the ALU without reallocation */
-void alu_reset(alu_p alu) { initialize(alu); }
-
-/** Sets the ALU fields to default values */
-void initialize(alu_p alu) {
-    alu->sr1 = 0;
-    alu->sr2 = 0;
-    alu->result = 0;
-}
+void alu_reset(alu_p alu) { initialize_alu(alu); }
 
 /** Deallocates the ALU */
 void alu_destroy(alu_p alu) { free(alu); }
@@ -54,3 +53,10 @@ void alu_and(alu_p alu) { alu->result = alu->sr1 & alu->sr2; }
 
 /** Execute NOT operation on loaded SR1 value */
 void alu_not(alu_p alu) { alu->result = ~alu->sr1; }
+
+/** Sets the ALU fields to default values */
+void initialize_alu(alu_p alu) {
+    alu->sr1 = 0;
+    alu->sr2 = 0;
+    alu->result = 0;
+}

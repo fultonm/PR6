@@ -1,12 +1,9 @@
+#ifndef ALU_H
+#define ALU_H
+
 #include "global.h"
 
 typedef struct alu_t *alu_p;
-
-typedef struct alu_snapshot_t {
-    word_t a;
-    word_t b;
-    word_t result;
-} alu_snapshot_t;
 
 /** Allocates and initializes a new ALU module */
 alu_p alu_create();
@@ -40,3 +37,5 @@ void alu_and(alu_p);
 
 /** Execute NOT operation on loaded SR1 value */
 void alu_not(alu_p);
+
+#endif

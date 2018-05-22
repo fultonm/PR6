@@ -1,12 +1,15 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "global.h"
-#include <stddef.h>
+#include "cpu.h"
 
 #define MASK_WORD_T_HIGH_ORDER 32768 /* 1000 0000 0000 0000 */
 #define BITSHIFT_HIGH_ORDER 15
 
 /* CPU Struct */
 typedef struct cpu_t {
-    /* Various CPU registers and memory. */
     word_t registers[REGISTER_SIZE];
     cc_t cc;
     word_t ir;  // instruction_register
@@ -15,27 +18,38 @@ typedef struct cpu_t {
     word_t mdr; // memory_data_register
 } cpu_t, *cpu_p;
 
+/** Initializes the variables of the CPU */
+void initialize_cpu(cpu_p);
+
+/** Sets the CPU based on the value just written to a register */
+void set_cc(cpu_p, word_t);
+
+/** Creates a CPU object, initializes it, and returns the pointer */
 cpu_p cpu_create() {
     cpu_p cpu = calloc(1, sizeof(cpu_t));
-    initialize(cpu);
+    initialize_cpu(cpu);
     return cpu;
 }
 
-void cpu_reset(cpu_p cpu) { initialize(cpu); }
+/** Reinitializes the CPU object without reallocation */
+void cpu_reset(cpu_p cpu) { initialize_cpu(cpu); }
 
-void initialize(cpu_p cpu) {
-    size_t i;
-    for (i = 0; i < REGISTER_SIZE; i++) {
-        cpu->registers[i] = 0;
-    }
-    cpu->cc = 0;
-    cpu->ir = 0;
-    cpu->pc = 0;
-    cpu->mar = 0;
-    cpu->mdr = 0;
-}
-
+/** Deallocates the CPU object */
 void cpu_destroy(cpu_p cpu) { free(cpu); }
+
+/** Takes a snapshot of the CPU data for debugging or display purposes */
+cpu_snapshot_t cpu_get_snapshot(cpu_p cpu) {
+    cpu_snapshot_t snapshot;
+    snapshot.cc_n = cpu_get_cc_n(cpu);
+    snapshot.cc_z = cpu_get_cc_z(cpu);
+    snapshot.cc_p = cpu_get_cc_p(cpu);
+    snapshot.pc = cpu->pc;
+    snapshot.ir = cpu->ir;
+    snapshot.mar = cpu->mar;
+    snapshot.mdr = cpu->mdr;
+    memcpy(snapshot.registers, cpu->registers, sizeof(word_t) * REGISTER_SIZE);
+    return snapshot;
+}
 
 /** Fetches the data at the specified regiser */
 word_t cpu_get_register(cpu_p cpu, reg_addr_t reg) { return cpu->registers[reg]; }
@@ -79,7 +93,6 @@ void cpu_increment_pc_by_value(cpu_p cpu, word_t value) { cpu->pc += value; }
 /** Sets the PC to a new value */
 void cpu_set_pc(cpu_p cpu, word_t data) {
     cpu->pc = data;
-#define BITSHIFT_HIGH_ORDER 15
 }
 
 /** Returns the current PC */
@@ -97,6 +110,19 @@ word_t cpu_get_mdr(cpu_p cpu) { return cpu->mdr; }
 /** Sets the MDR */
 void cpu_set_mdr(cpu_p cpu, word_t data) { cpu->mdr = data; }
 
+void initialize_cpu(cpu_p cpu) {
+    size_t i;
+    for (i = 0; i < REGISTER_SIZE; i++) {
+        cpu->registers[i] = 0;
+    }
+    cpu->cc = 0;
+    cpu->ir = 0;
+    cpu->pc = 0;
+    cpu->mar = 0;
+    cpu->mdr = 0;
+}
+
+/** Sets the CPU based on the value just written to a register */
 void set_cc(cpu_p cpu, word_t value) {
     word_t masked_value = value & MASK_WORD_T_HIGH_ORDER;
     bool_t negative = masked_value >> BITSHIFT_HIGH_ORDER;

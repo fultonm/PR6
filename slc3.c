@@ -1,6 +1,6 @@
 /* 
  * LC-3 Simulator Simulator
- * Contributors: Mike Fulton, Sam Brendel, Logan Stafford, Enoch Chan
+ * Contributors: Mike Fulton, Logan Stafford, Enoch Chan
  * TCSS372 - Computer Architecture - Spring 2018
  *
  * LC3 Simulator Module
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
         file_ptr = open_file(input_file_name);
         while (file_ptr == NULL) 
         {
-            printf("\nFile not found. Enter a file name: ");
+            printf("File not found. Enter a file name: ");
             scanf("%s", input_file_name);
         }
         load_file_to_memory(cpu, open_file(input_file_name));
@@ -782,7 +782,7 @@ unsigned int translate_memory_address(unsigned int input_address)
 }
 
 /*
- * This function will allow the opening of files
+ * This function allows for the opening of files based on a given input string.
  */
 FILE *open_file(char *input_file_name)
 {
@@ -802,11 +802,9 @@ void load_file_to_memory(CPU_p cpu, FILE *input_file_pointer)
         char line[8];
         fgets(line, sizeof(line), input_file_pointer);
 
-        /*
-        * Subtract 0x3000 from first hex value in file to be starting memory location
-        * Note: This requires the first line of the hex file to not be less than x3000 since
-        * this is an unsigned short.
-        */
+        /* Subtract 0x3000 from first hex value in file to be starting memory location. This 
+        * requires the first line of the hex file to not be less than x3000 since this is 
+        * an unsigned short. */
         unsigned short first_address = strtol(line, NULL, 16);
         starting_address = first_address;
 

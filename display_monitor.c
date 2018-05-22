@@ -1,6 +1,6 @@
 /* 
  * LC-3 Simulator Simulator
- * Contributors: Mike Fulton, Sam Brendel, Logan Stafford, Enoch Chan
+ * Contributors: Mike Fulton, Logan Stafford, Enoch Chan
  * TCSS372 - Computer Architecture - Spring 2018
  *
  * Display Monitor Module

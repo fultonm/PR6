@@ -1,6 +1,6 @@
 /* 
  * LC-3 Simulator Simulator
- * Contributors: Mike Fulton, Sam Brendel, Logan Stafford, Enoch Chan
+ * Contributors: Mike Fulton, Logan Stafford, Enoch Chan
  * TCSS372 - Computer Architecture - Spring 2018
  *
  * LC3 Simulator Module Header
@@ -44,40 +44,40 @@
 #define JSR 4
 #define TRAP 15
 #define LD 2
-#define LDR 6 							// 0110 0000 0000 0000
+#define LDR 6 									/* 0110 0000 0000 0000 */
 #define LEA 14
 #define ST 3
-#define STR 7 							// 0111 0000 0000 0000
+#define STR 7 									/* 0111 0000 0000 0000 */
 
 /* Mask value constants. */
-#define MASK_OPCODE 61440	 			// 1111 0000 0000 0000
-#define MASK_DR 3584		 			// 0000 1110 0000 0000
-#define MASK_SR1 448		 			// 0000 0001 1100 0000
-#define MASK_SR2 7			 			// 0000 0000 0000 0111
-#define MASK_PCOFFSET11 2047 			// 0000 0111 1111 1111
-#define MASK_PCOFFSET9 511   			// 0000 0001 1111 1111
-#define MASK_PCOFFSET6 63				// 0000 0000 0011 1111
-#define MASK_TRAPVECT8 255  			// 0000 0000 1111 1111
-#define MASK_BIT11 2048				 	// 0000 1000 0000 0000
-#define MASK_BIT5 32		 			// 0000 0000 0010 0000
-#define MASK_IMMED5 31		 			// 0000 0000 0001 1111
-#define MASK_NZP 3584		 			// 0000 1110 0000 0000
+#define MASK_OPCODE 61440	 					/* 1111 0000 0000 0000 */
+#define MASK_DR 3584		 					/* 0000 1110 0000 0000 */
+#define MASK_SR1 448		 					/* 0000 0001 1100 0000 */
+#define MASK_SR2 7			 					/* 0000 0000 0000 0111 */
+#define MASK_PCOFFSET11 2047 					/* 0000 0111 1111 1111 */
+#define MASK_PCOFFSET9 511   					/* 0000 0001 1111 1111 */
+#define MASK_PCOFFSET6 63						/* 0000 0000 0011 1111 */
+#define MASK_TRAPVECT8 255  					/* 0000 0000 1111 1111 */
+#define MASK_BIT11 2048				 			/* 0000 1000 0000 0000 */
+#define MASK_BIT5 32		 					/* 0000 0000 0010 0000 */
+#define MASK_IMMED5 31		 					/* 0000 0000 0001 1111 */
+#define MASK_NZP 3584		 					/* 0000 1110 0000 0000 */
 #define MASK_CC_N 7
 #define MASK_CC_Z 5
 #define MASK_CC_P 1
-#define MASK_NEGATIVE_IMMEDIATE 0xFFE0  //1111 1111 1110 0000
-#define MASK_NEGATIVE_PCOFFSET11 0xF800 //1111 1000 0000 0000
-#define MASK_NEGATIVE_PCOFFSET9 0xFE00  //1111 1110 0000 0000
-#define MASK_NEGATIVE_PCOFFSET6 0xFFC0  //1111 1111 1100 0000
+#define MASK_NEGATIVE_IMMEDIATE 0xFFE0  		/* 1111 1111 1110 0000 */
+#define MASK_NEGATIVE_PCOFFSET11 0xF800 		/* 1111 1000 0000 0000 */
+#define MASK_NEGATIVE_PCOFFSET9 0xFE00  		/* 1111 1110 0000 0000 */
+#define MASK_NEGATIVE_PCOFFSET6 0xFFC0  		/* 1111 1111 1100 0000 */
 
 /* Condition code constants. */
-#define CONDITION_N 4   				// 0000 1000 0000 0000
-#define CONDITION_Z 2   				// 0000 0100 0000 0000
-#define CONDITION_P 1   				// 0000 0010 0000 0000
-#define CONDITION_NZ 6  				// 0000 1100 0000 0000
-#define CONDITION_NP 5  				// 0000 1010 0000 0000
-#define CONDITION_ZP 3  				// 0000 0110 0000 0000
-#define CONDITION_NZP 7 				// 0000 1110 0000 0000
+#define CONDITION_N 4   						/* 0000 1000 0000 0000 */
+#define CONDITION_Z 2   						/* 0000 0100 0000 0000 */
+#define CONDITION_P 1   						/* 0000 0010 0000 0000 */
+#define CONDITION_NZ 6  						/* 0000 1100 0000 0000 */
+#define CONDITION_NP 5  						/* 0000 1010 0000 0000 */
+#define CONDITION_ZP 3  						/* 0000 0110 0000 0000 */
+#define CONDITION_NZP 7 						/* 0000 1110 0000 0000 */
 
 /* Bitshifting value constants */
 #define BITSHIFT_OPCODE 12
@@ -100,10 +100,10 @@
 #define TRAP_VECTOR_X25 0x25
 
 /* Bit value constants. */
-#define BIT_IMMED 16					// 0000 0000 0001 0000
-#define BIT_PCOFFSET11 1024 			// 0000 0100 0000 0000
-#define BIT_PCOFFSET9 256   			// 0000 0001 0000 0000
-#define BIT_PCOFFSET6 32				// 0000 0000 0010 0000
+#define BIT_IMMED 16							/* 0000 0000 0001 0000 */
+#define BIT_PCOFFSET11 1024 					/* 0000 0100 0000 0000 */
+#define BIT_PCOFFSET9 256   					/* 0000 0001 0000 0000 */
+#define BIT_PCOFFSET6 32						/* 0000 0000 0010 0000 */
 
 /* Other program constants */
 #define NUM_OF_BITS 16

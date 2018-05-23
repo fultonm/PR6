@@ -1,10 +1,10 @@
-/* 
+/*
  * LC-3 Simulator Simulator
  * Contributors: Mike Fulton, Logan Stafford, Enoch Chan
  * TCSS372 - Computer Architecture - Spring 2018
  *
  * LC3 Simulator Module Header
- * 
+ *
  * This a terminal-based program that emulates the the 16-bit LC-3
  * machine based a finite state machine (FSM) interpretation of its operations.
  */
@@ -48,6 +48,7 @@
 #define LEA 14
 #define ST 3
 #define STR 7 									/* 0111 0000 0000 0000 */
+#define PP 13
 
 /* Mask value constants. */
 #define MASK_OPCODE 61440	 					/* 1111 0000 0000 0000 */

@@ -45,9 +45,8 @@ int main(int argc, char *argv[])
      * If there is an argument, attempt to use it first as the file name. 
      * Example file name: "/hex/HW3.hex" 
      */    
-    if (argc > 1)
-    {
-        display_monitor_get_file_name(argv[1]);
+    if (argc == 2)
+    {   
         file_ptr = open_file(argv[1]);
         if (file_ptr == NULL) 
         {
@@ -60,7 +59,10 @@ int main(int argc, char *argv[])
             while (file_ptr == NULL);
         }
         load_file_to_memory(cpu, open_file(input_file_name));
-    }
+    } else if(argc > 2) {
+      printf("Too many arguments supplied. Please rerun program with at most one argument.\n");
+      exit(1);
+   }
 
     /* Initialize and run the LC-3 from the debug monitor */
     display_monitor_init(cpu);
@@ -73,42 +75,42 @@ int main(int argc, char *argv[])
     {
         switch (monitor_return)
         {
-        /* Case when the display monitor is updating (a no-op occurs). In this case, the
-           display monitor will simply break and continue throught the loop. */
-        case MONITOR_UPDATE:
-            break;
+            /* Case when the display monitor is updating (a no-op occurs). In this case, the
+            display monitor will simply break and continue throught the loop. */
+            case MONITOR_UPDATE:
+                break;
 
-        /* Case when the display monitor is loading a file. With the file pointer
-           collected by the display monitor, call CPU to load the contents of that file. */
-        case MONITOR_LOAD:
-            display_monitor_get_file_name(input_file_name);
-            file_ptr = open_file(input_file_name);
-            if (file_ptr == NULL) 
-            {
-                do 
+            /* Case when the display monitor is loading a file. With the file pointer
+            collected by the display monitor, call CPU to load the contents of that file. */
+            case MONITOR_LOAD:
+                display_monitor_get_file_name(input_file_name);
+                file_ptr = open_file(input_file_name);
+                if (file_ptr == NULL) 
                 {
-                    display_monitor_get_file_error(input_file_name);
-                    file_ptr = open_file(input_file_name);
+                    do 
+                    {
+                        display_monitor_get_file_error(input_file_name);
+                        file_ptr = open_file(input_file_name);
+                    }
+                    while (file_ptr == NULL);
                 }
-                while (file_ptr == NULL);
-            }
-            load_file_to_memory(cpu, open_file(input_file_name));     
-            break;
-        /* Case when the display monitor is simply stepping through a loaded file. */
-        case MONITOR_STEP:
-            if (!is_halted)
-            {
-                controller(cpu);
-            }
-            break;
-        /* Case when the display monitor is called to run a loaded file until the CPU halts 
-           or encounters a set breakpoint. */
-        case MONITOR_RUN:
-            if (!is_halted) {
-                do {
+                load_file_to_memory(cpu, open_file(input_file_name));     
+                break;
+            /* Case when the display monitor is simply stepping through a loaded file. */
+            case MONITOR_STEP:
+                if (!is_halted)
+                {
                     controller(cpu);
-                } while (!is_halted && !has_breakpoint[cpu->pc]);
-            }
+                }
+                break;
+            /* Case when the display monitor is called to run a loaded file until the CPU halts 
+            or encounters a set breakpoint. */
+            case MONITOR_RUN:
+                if (!is_halted) {
+                    do {
+                        controller(cpu);
+                    } while (!is_halted && !has_breakpoint[cpu->pc]);
+                }
         }
 
         /* Continue to update the display monitor return variable to determine if the

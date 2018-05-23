@@ -43,7 +43,6 @@ int main(int argc, char *argv[]) {
     // If there is an argument, attempt to used the first as a file name.
     // char *fileName = "./hex/HW3.hex";
     if (argc > 1) {
-        
         load_file_to_memory(lc3, open_file(argv[1]));
     }
 
@@ -52,26 +51,24 @@ int main(int argc, char *argv[]) {
      * copy of all values in the LC3 and makes it impossible for Display to modify the LC3
      * without calling the appropriate methods. */
     lc3_snapshot_t machine_snapshot = lc3_get_snapshot(lc3);
-    display_loop_result_t result = display_loop(disp, machine_snapshot);
+    display_update(disp, machine_snapshot);
+    display_result_t result = display_loop(disp, machine_snapshot);
 
     /* If the user has selected MONITOR_STEP, then lets continue executing the
      * LC-3 */
-    while (result.user_action != MONITOR_QUIT) {
-        switch (result.user_action) {
-        case MONITOR_UPDATE:
-            /* No operations this loop, just do the display monitor loop again */
-            break;
+    while (result != DISPLAY_QUIT) {
+        switch (result) {
 
-        case MONITOR_LOAD:
+        case DISPLAY_LOAD:
             //load_file_to_memory(lc3, open_file(fileName));
             break;
 
-        case MONITOR_STEP:
+        case DISPLAY_STEP:
             if (lc3_is_halted(lc3) == FALSE) {
                 controller(lc3, disp);
             }
             break;
-        case MONITOR_RUN:
+        case DISPLAY_RUN:
             if (lc3_is_halted(lc3) == FALSE) {
                 do {
                     controller(lc3, disp);

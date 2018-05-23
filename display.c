@@ -7,14 +7,14 @@
  * operations.
  */
 
-#include <stdlib.h>
-#include <signal.h>
-#include <string.h>
-#include <curses.h>
-#include <menu.h>
 #include "display.h"
 #include "global.h"
 #include "lc3.h"
+#include <curses.h>
+#include <menu.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define INDEX_REG 0
 #define INDEX_MEM 1
@@ -64,6 +64,7 @@ typedef struct display_t {
     WINDOW *menu_windows[3];
     WINDOW *input_window, *output_window;
     MENU *menus[3];
+    bool_t menus_populated;
     ITEM **menu_list_items[3];
     int item_counts[3];
     int saved_menu_index[3];
@@ -75,7 +76,7 @@ typedef struct display_t {
     bool breakpoints[MEMORY_SIZE];
 } display_t, *display_p;
 
-int initialize(display_p disp);
+int initialize_display(display_p disp);
 int free_display(display_p);
 void print_message(const char *, char *);
 void clear_message();
@@ -92,7 +93,8 @@ word_t get_word_from_string(char *);
 
 display_p display_create() {
     display_p disp = calloc(1, sizeof(display_t));
-    initialize(disp);
+    initialize_display(disp);
+    return disp;
 }
 
 /** Frees all memory associated with Ncurses and prepares the LC-3 simulator for
@@ -108,7 +110,7 @@ int display_destroy(display_p disp) {
 
 /** Initializes the debug monitor with variables needed throughout the execution
  * of the LC-3 simulator. */
-int initialize(display_p disp) {
+int initialize_display(display_p disp) {
     /* Initialize breakpoint array */
     int i;
     for (i = 0; i < MEMORY_SIZE; i++) {
@@ -147,6 +149,10 @@ int initialize(display_p disp) {
         newwin(MEM_PANEL_HEIGHT, MEM_PANEL_WIDTH, HEIGHT_PADDING, CPU_PANEL_WIDTH + 8);
     disp->menu_windows[CPU] =
         newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + HEIGHT_PADDING, 4);
+
+    /** TODO: This flag is uncessary, but only solution I can think of for not attempting to
+     * save/restore selected menu item before they're populated. */
+    disp->menus_populated = FALSE;
 
     disp->input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
                                 MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
@@ -292,6 +298,9 @@ void draw_io_window(WINDOW *window, char *title) {
 }
 
 void save_menu_indicies(display_p disp) {
+    if (disp->menus_populated == FALSE) {
+        return;
+    }
     int i;
     for (i = 0; i < 3; i++) {
         ITEM *item = (ITEM *)current_item(disp->menus[i]);
@@ -321,7 +330,7 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     int i;
     for (i = 0; i < disp->item_counts[INDEX_REG]; ++i) {
         sprintf(disp->reg_strings[i].label, "R%d:", i);
-        sprintf(disp->reg_strings[i].description, "x%04X", 0x3000);
+        sprintf(disp->reg_strings[i].description, "x%04X", lc3_snapshot.cpu_snapshot.registers[i]);
         disp->menu_list_items[INDEX_REG][i] =
             new_item(disp->reg_strings[i].label, disp->reg_strings[i].description);
     }
@@ -330,13 +339,15 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     /* Create the items for the memory */
     for (i = 0; i < disp->item_counts[INDEX_MEM]; ++i) {
         sprintf(disp->mem_strings[i].label,
-                "x%04X:", lc3_snapshot.starting_address); /* So to start at x3000 */
+                "x%04X:", lc3_snapshot.starting_address + i); /* So to start at x3000 */
         /* If this memory location has a breakpoint we will display a small square
          * next to it. */
         if (disp->breakpoints[i]) {
-            sprintf(disp->mem_strings[i].description, "x%04X [x]", lc3_snapshot.memory_snapshot.data[i]);
+            sprintf(disp->mem_strings[i].description, "x%04X [x]",
+                    lc3_snapshot.memory_snapshot.data[i]);
         } else {
-            sprintf(disp->mem_strings[i].description, "x%04X    ", lc3_snapshot.memory_snapshot.data[i]);
+            sprintf(disp->mem_strings[i].description, "x%04X    ",
+                    lc3_snapshot.memory_snapshot.data[i]);
         }
 
         disp->menu_list_items[INDEX_MEM][i] =
@@ -368,7 +379,8 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     sprintf(disp->cpu_strings[9].description, "%d", lc3_snapshot.cpu_snapshot.cc_p);
 
     for (i = 0; i < CPU_ELEMENTS_COUNT; i++) {
-        disp->menu_list_items[CPU][i] = new_item(disp->cpu_strings[i].label, disp->cpu_strings[i].description);
+        disp->menu_list_items[CPU][i] =
+            new_item(disp->cpu_strings[i].label, disp->cpu_strings[i].description);
     }
     disp->menu_list_items[CPU][i] = new_item((char *)NULL, (char *)NULL);
 
@@ -376,6 +388,7 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     for (i = 0; i < 3; i++) {
         disp->menus[i] = new_menu((ITEM **)(disp->menu_list_items[i]));
     }
+    disp->menus_populated = TRUE;
 
     /* Set the initially active window */
     keypad(disp->menu_windows[disp->active_window], TRUE);
@@ -387,16 +400,18 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
 
     /* The the menu sub ??? and its format menu_format is number of rows, columns
      * for the list's visible contents and scrolls the rest of the list. */
-    set_menu_sub(disp->menus[INDEX_REG], derwin(disp->menu_windows[INDEX_REG], REG_PANEL_HEIGHT - 4,
-                                          REG_PANEL_WIDTH - 4, 3, 1));
+    set_menu_sub(disp->menus[INDEX_REG],
+                 derwin(disp->menu_windows[INDEX_REG], REG_PANEL_HEIGHT - 4,
+                        REG_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(disp->menus[INDEX_REG], REG_PANEL_HEIGHT - 4, 1);
     /* Memories... */
-    set_menu_sub(disp->menus[INDEX_MEM], derwin(disp->menu_windows[INDEX_MEM], MEM_PANEL_HEIGHT - 4,
-                                          MEM_PANEL_WIDTH - 4, 3, 1));
+    set_menu_sub(disp->menus[INDEX_MEM],
+                 derwin(disp->menu_windows[INDEX_MEM], MEM_PANEL_HEIGHT - 4,
+                        MEM_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(disp->menus[INDEX_MEM], MEM_PANEL_HEIGHT - 4, 1);
     /* CPU... */
-    set_menu_sub(disp->menus[CPU],
-                 derwin(disp->menu_windows[CPU], CPU_PANEL_HEIGHT - 4, CPU_PANEL_WIDTH - 4, 3, 1));
+    set_menu_sub(disp->menus[CPU], derwin(disp->menu_windows[CPU], CPU_PANEL_HEIGHT - 4,
+                                          CPU_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(disp->menus[CPU], MEM_PANEL_HEIGHT - 4, 2);
 
     /* Set menu mark to the string " * " */
@@ -426,181 +441,184 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
 
 /** The main logic loop for the debug monitor. Listens for user keystrokes and
  * performs debugging operations */
-display_loop_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot) {
+display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     /* Set selected item in memory to be current PC */
-    set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][lc3_snapshot.cpu_snapshot.pc]);
+    size_t pc_index = get_index_from_address(lc3_snapshot.cpu_snapshot.pc);
+    set_current_item(disp->menus[INDEX_MEM],
+                     disp->menu_list_items[INDEX_MEM][pc_index]);
     display_update(disp, lc3_snapshot);
 
     /* Input vars used for 5) Show Mem, 6)Edit Mem, 8) Set/Unset breakpoint */
     char word_input_raw[6];
     word_t word_input;
-    /* Secondary input vars used for 6) Edit Mem to specify the data to insert at the address */
+    /* Secondary input vars used for 6) Edit Mem to specify the data to insert at the address
+     */
     char word_data_input_raw[6];
     word_t word_data_input;
 
     /** This variable is used to return information about the user's selection
      * back to the LC-3. We load it with whether the current PC is a breakpoint. */
-    display_loop_result_t monitor_return = {MONITOR_UPDATE, disp->breakpoints[lc3_snapshot.cpu_snapshot.pc]};
+    display_result_t display_return = DISPLAY_NO_ACTION;
 
     if (lc3_snapshot.is_halted) {
         print_message(MSG_CPU_HALTED, NULL);
     }
 
     int c;
-        /* If the user selected 9) to quit this while loop will exit */
-        while ((c = wgetch(disp->menu_windows[disp->active_window])) != 57) {
-            switch (c) {
-            case 9:
-                /*　User pressed Tab to change active window */
-                disp->active_window++;
-                disp->active_window = disp->active_window % 3;
-                keypad(disp->menu_windows[disp->active_window], TRUE);
-                print_window_titles(disp);
-                break;
-            case 49:
-                /* User selected 1) to load a file */
-                print_message(MSG_LOAD, NULL);
-                /** Move the cursor, turn on echo mode so the user can see their input
-                 *  then turn it back on after capturing file name input */
-                move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
-                echo();
-                getstr(load_file_input);
-                noecho();
+    /* If the user selected 9) to quit this while loop will exit */
+    while ((c = wgetch(disp->menu_windows[disp->active_window])) != 57) {
+        switch (c) {
+        case 9:
+            /*　User pressed Tab to change active window */
+            disp->active_window++;
+            disp->active_window = disp->active_window % 3;
+            keypad(disp->menu_windows[disp->active_window], TRUE);
+            print_window_titles(disp);
+            display_update(disp, lc3_snapshot);
+            /** Continue the while loop (i.e. wait for another char) */
+            continue;
+        case 49:
+            /* User selected 1) to load a file */
+            print_message(MSG_LOAD, NULL);
+            /** Move the cursor, turn on echo mode so the user can see their input
+             *  then turn it back on after capturing file name input */
+            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
+            echo();
+            getstr(load_file_input);
+            noecho();
 
-                clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-                print_message(MSG_LOADED, load_file_input);
-                monitor_return.user_action = MONITOR_LOAD;
-                break;
-            case 51:
-                /* User selected 3) to step through code */
-                if (lc3_snapshot.file_loaded == FALSE) {
-                    print_message(MSG_STEP_NO_FILE, NULL);
-                    monitor_return.user_action = MONITOR_NO_ACTION;
-                } else if (lc3_snapshot.is_halted) {
-                    print_message(MSG_CPU_HALTED_STEP, NULL);
-                    monitor_return.user_action = MONITOR_NO_ACTION;
-                } else {
-                    print_message(MSG_STEP, NULL);
-                    monitor_return.user_action = MONITOR_STEP;
-                }
-                break;
-            case 52:
-                /* User selected 4) to run code */
-                if (lc3_snapshot.file_loaded) {
-                    print_message(MSG_RUN_NO_FILE, NULL);
-                    monitor_return.user_action = MONITOR_NO_ACTION;
-                } else if (lc3_snapshot.is_halted) {
-                    print_message(MSG_CPU_HALTED_RUN, NULL);
-                    monitor_return.user_action = MONITOR_NO_ACTION;
-                } else {
-                    print_message(MSG_RUNNING_CODE, NULL);
-                    monitor_return.user_action = MONITOR_RUN;
-                }
-                break;
-            case 53:
-                /* User selected 5) to display a specific memory address */
-                print_message(MSG_DISPLAY_MEM, NULL);
+            clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
+            print_message(MSG_LOADED, load_file_input);
+            display_return = DISPLAY_LOAD;
+            break;
+        case 51:
+            /* User selected 3) to step through code */
+            if (lc3_snapshot.file_loaded == FALSE) {
+                print_message(MSG_STEP_NO_FILE, NULL);
+                continue;
+            } else if (lc3_snapshot.is_halted) {
+                print_message(MSG_CPU_HALTED_STEP, NULL);
+                continue;
+            } else {
+                print_message(MSG_STEP, NULL);
+                display_return = DISPLAY_STEP;
+            }
+            break;
+        case 52:
+            /* User selected 4) to run code */
+            if (lc3_snapshot.file_loaded) {
+                print_message(MSG_RUN_NO_FILE, NULL);
+                continue;
+            } else if (lc3_snapshot.is_halted) {
+                print_message(MSG_CPU_HALTED_RUN, NULL);
+                continue;
+            } else {
+                print_message(MSG_RUNNING_CODE, NULL);
+                display_return = DISPLAY_RUN;
+            }
+            break;
+        case 53:
+            /* User selected 5) to display a specific memory address */
+            print_message(MSG_DISPLAY_MEM, NULL);
+            /** Move the cursor, turn on echo mode so the user can see their input
+             *  then turn it back on after capturing file name input */
+            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_DISPLAY_MEM) + 4);
+            echo();
+            getstr(word_input_raw);
+            noecho();
+            word_input = get_word_from_string(word_input_raw);
+            set_current_item(
+                disp->menus[INDEX_MEM],
+                disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
+            continue;
+            break;
+        case 54:
+            if (lc3_snapshot.file_loaded) {
+                print_message(MSG_EDIT_MEM_NO_FILE, NULL);
+                continue;
+            }
+            /* User selected 6) to edit a memory location */
+            print_message(MSG_EDIT_MEM_PPT_ADDR, NULL);
+            /** Move the cursor, turn on echo mode so the user can see their input
+             *  then turn it back on after capturing address */
+            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_PPT_ADDR) + 4);
+            echo();
+            getstr(word_input_raw);
+            noecho();
+            word_input = get_word_from_string(word_input_raw);
+            print_message(MSG_EDIT_MEM_PPT_DATA, word_input_raw);
+            /** Move the cursor, turn on echo mode so the user can see their input
+             *  then turn it back on after capturing the data */
+            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
+                 strlen(MSG_EDIT_MEM_PPT_DATA) + strlen(word_input_raw) + 4);
+            echo();
+            getstr(word_data_input_raw);
+            noecho();
+            word_data_input = get_word_from_string(word_data_input_raw);
+            /** TODO: This will not be the correct thing to do here. We need a method in slc3
+             * and ultimately lc3 to set memory. */
+            /*lc3_snapshot.memory_snapsshot.data[mem_addr_index] = mem_data;*/
+            display_update(disp, lc3_snapshot);
+            continue;
+        case 56:
+            /* User selected 8) to set/unset a breakpoint */
+            if (lc3_snapshot.file_loaded == FALSE) {
+                print_message(MSG_SET_UNSET_BRKPT_NO_FILE, NULL);
+                continue;
+            } else {
+                print_message(MSG_SET_UNSET_BRKPT, NULL);
                 /** Move the cursor, turn on echo mode so the user can see their input
                  *  then turn it back on after capturing file name input */
-                move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_DISPLAY_MEM) + 4);
+                move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_SET_UNSET_BRKPT) + 4);
                 echo();
                 getstr(word_input_raw);
                 noecho();
                 word_input = get_word_from_string(word_input_raw);
-                set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
-                monitor_return.user_action = MONITOR_NO_ACTION;
-                break;
-            case 54:
-                if (lc3_snapshot.file_loaded) {
-                    print_message(MSG_EDIT_MEM_NO_FILE, NULL);
-                    monitor_return.user_action = MONITOR_NO_ACTION;
-                }
-                /* User selected 6) to edit a memory location */
-                print_message(MSG_EDIT_MEM_PPT_ADDR, NULL);
-                /** Move the cursor, turn on echo mode so the user can see their input
-                 *  then turn it back on after capturing address */
-                move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_PPT_ADDR) + 4);
-                echo();
-                getstr(word_input_raw);
-                noecho();
-                word_input = get_word_from_string(word_input_raw);
-                print_message(MSG_EDIT_MEM_PPT_DATA, word_input_raw);
-                /** Move the cursor, turn on echo mode so the user can see their input
-                 *  then turn it back on after capturing the data */
-                move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
-                     strlen(MSG_EDIT_MEM_PPT_DATA) + strlen(word_input_raw) + 4);
-                echo();
-                getstr(word_data_input_raw);
-                noecho();
-                word_data_input = get_word_from_string(word_data_input_raw);
-                /** TODO: This will not be the correct thing to do here. We need a method in slc3 and ultimately lc3 to set memory. */
-                /*lc3_snapshot.memory_snapsshot.data[mem_addr_index] = mem_data;*/
-                monitor_return.user_action = MONITOR_UPDATE;
-                break;
-            case 56:
-                /* User selected 8) to set/unset a breakpoint */
-                if (lc3_snapshot.file_loaded == FALSE) {
-                    print_message(MSG_SET_UNSET_BRKPT_NO_FILE, NULL);
-                    monitor_return.user_action = MONITOR_NO_ACTION;
-                } else {
-                    print_message(MSG_SET_UNSET_BRKPT, NULL);
-                    /** Move the cursor, turn on echo mode so the user can see their input
-                     *  then turn it back on after capturing file name input */
-                    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
-                         strlen(MSG_SET_UNSET_BRKPT) + 4);
-                    echo();
-                    getstr(word_input_raw);
-                    noecho();
-                    word_input = get_word_from_string(word_input_raw);
-                    disp->breakpoints[get_index_from_address(word_input)] = !disp->breakpoints[get_index_from_address(word_input)];
-                    save_menu_indicies(disp);
-                    display_update(disp, lc3_snapshot);
-                    restore_menu_indicies(disp);
-                }
-                monitor_return.user_action = MONITOR_UPDATE;
-                break;
-            case KEY_DOWN:
-                menu_driver(disp->menus[disp->active_window], REQ_DOWN_ITEM);
-                monitor_return.user_action = MONITOR_NO_ACTION;
-                break;
-            case KEY_UP:
-                menu_driver(disp->menus[disp->active_window], REQ_UP_ITEM);
-                monitor_return.user_action = MONITOR_NO_ACTION;
-                break;
-            case KEY_LEFT:
-                menu_driver(disp->menus[disp->active_window], REQ_LEFT_ITEM);
-                monitor_return.user_action = MONITOR_NO_ACTION;
-                break;
-            case KEY_RIGHT:
-                menu_driver(disp->menus[disp->active_window], REQ_RIGHT_ITEM);
-                monitor_return.user_action = MONITOR_NO_ACTION;
-                break;
-            case KEY_NPAGE:
-                menu_driver(disp->menus[disp->active_window], REQ_SCR_DPAGE);
-                monitor_return.user_action = MONITOR_NO_ACTION;
-                break;
-            case KEY_PPAGE:
-                menu_driver(disp->menus[disp->active_window], REQ_SCR_UPAGE);
-                monitor_return.user_action = MONITOR_NO_ACTION;
-                break;
+                disp->breakpoints[get_index_from_address(word_input)] =
+                    !disp->breakpoints[get_index_from_address(word_input)];
+                save_menu_indicies(disp);
+                display_update(disp, lc3_snapshot);
+                restore_menu_indicies(disp);
             }
-
-            /* Shows the last inputted character as Ncurses recognizes it */
-            attron(COLOR_PAIR(1));
-            mvprintw(LINES - 3, 0, "Debug: %d", c, c);
-            attroff(COLOR_PAIR(1));
-
-            refresh();
-
-            if (monitor_return.user_action != MONITOR_NO_ACTION) {
-                return monitor_return;
-            }
+            display_update(disp, lc3_snapshot);
+            break;
+        case KEY_DOWN:
+            menu_driver(disp->menus[disp->active_window], REQ_DOWN_ITEM);
+            continue;
+        case KEY_UP:
+            menu_driver(disp->menus[disp->active_window], REQ_UP_ITEM);
+            continue;
+        case KEY_LEFT:
+            menu_driver(disp->menus[disp->active_window], REQ_LEFT_ITEM);
+            continue;
+        case KEY_RIGHT:
+            menu_driver(disp->menus[disp->active_window], REQ_RIGHT_ITEM);
+            continue;
+        case KEY_NPAGE:
+            menu_driver(disp->menus[disp->active_window], REQ_SCR_DPAGE);
+            continue;
+        case KEY_PPAGE:
+            menu_driver(disp->menus[disp->active_window], REQ_SCR_UPAGE);
+            continue;
         }
 
-    monitor_return.user_action = MONITOR_QUIT;
-    return monitor_return;
+        /* Shows the last inputted character as Ncurses recognizes it */
+        attron(COLOR_PAIR(1));
+        mvprintw(LINES - 3, 0, "Debug: %d", c, c);
+        attroff(COLOR_PAIR(1));
+
+        refresh();
+
+        /** Reaching this point means no 'continue;' was hit. Time to pass control back to the
+         * simulator */
+        return display_return;
+    }
+
+    /** The only way to break out of the while loop and reach this point is pressing 9 */
+    return DISPLAY_QUIT;
 }
 
+/** Returns a 16 bit LC3 word parsed from the specified string */
 word_t get_word_from_string(char *mem_string) {
     /* A little bit of edge case handling...
      * x3002 + strlen("x3002") - 4 = 3002

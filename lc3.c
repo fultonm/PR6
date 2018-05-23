@@ -1,10 +1,10 @@
 
-#include <stdlib.h>
 #include "lc3.h"
 #include "alu.h"
 #include "cpu.h"
 #include "global.h"
 #include "memory.h"
+#include <stdlib.h>
 
 typedef struct lc3_t {
     cpu_p cpu;
@@ -546,13 +546,12 @@ void lc3_trap_x25(lc3_p lc3) {
 }
 
 /** Gets the starting address for the PC according to the first line in the loaded hex file */
-word_t lc3_get_starting_address(lc3_p lc3) {
-    return lc3->starting_address;
-}
+word_t lc3_get_starting_address(lc3_p lc3) { return lc3->starting_address; }
 
 /** Sets the starting address for the PC according to the first line in the loaded hex file */
 void lc3_set_starting_address(lc3_p lc3, word_t starting_address) {
     lc3->starting_address = starting_address;
+    cpu_set_pc(lc3->cpu, starting_address);
 }
 
 /** Checks whether the LC3 is halted */
@@ -565,7 +564,7 @@ void lc3_toggle_halted(lc3_p lc3) { lc3->is_halted = !lc3->is_halted; }
 bool_t lc3_has_file_loaded(lc3_p lc3) { return lc3->is_file_loaded; }
 
 /** Toggles whether the LC3 has a file loaded */
-void lc3_toggle_file_loaded(lc3_p lc3) { lc3->is_file_loaded = !lc3->is_file_loaded; }
+void lc3_toggle_file_loaded(lc3_p lc3) { lc3->is_file_loaded = !(lc3->is_file_loaded); }
 
 /** Gets the current microstate of the LC3 */
 state_t lc3_get_state(lc3_p lc3) { return lc3->state; }

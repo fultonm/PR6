@@ -11,20 +11,16 @@
 
 #include "slc3.h"
 
-#define MONITOR_QUIT 0
-#define MONITOR_LOAD 1
-#define MONITOR_STEP 2
-#define MONITOR_RUN 3
-#define MONITOR_UPDATE 4
-#define MONITOR_NO_ACTION 5
+#define DISPLAY_QUIT 0
+#define DISPLAY_LOAD 1
+#define DISPLAY_STEP 2
+#define DISPLAY_RUN 3
+#define DISPLAY_NO_ACTION 5
+
+typedef int display_result_t;
 
 typedef struct display_t *display_p;
 typedef struct cpu_t *cpu_p;
-
-typedef struct display_loop_result_t {
-    int user_action;
-    bool_t breakpoint;
-} display_loop_result_t;
 
 char load_file_input[80];
 
@@ -34,7 +30,7 @@ void display_reset(display_p);
 
 void display_update(display_p, const lc3_snapshot_t);
 
-display_loop_result_t display_loop(display_p, const lc3_snapshot_t);
+display_result_t display_loop(display_p, const lc3_snapshot_t);
 
 int display_destroy(display_p);
 

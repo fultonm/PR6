@@ -47,15 +47,8 @@ int main(int argc, char *argv[])
      */    
     if (argc > 1)
     {
-        strcpy(input_file_name, argv[1]);
-        // file_ptr = open_file(input_file_name);
-        // while (file_ptr == NULL) 
-        // {
-            // printf("File not found. Enter a file name: ");
-            // scanf("%s", input_file_name);
-        // }
-        display_monitor_get_file_name(input_file_name);
-        file_ptr = open_file(input_file_name);
+        display_monitor_get_file_name(argv[1]);
+        file_ptr = open_file(argv[1]);
         if (file_ptr == NULL) 
         {
             do 

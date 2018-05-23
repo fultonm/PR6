@@ -39,7 +39,7 @@
 static const char MSG_CPU_HALTED[] =              "CPU halted :*)";
 static const char MSG_LOAD[] =                    "1) Enter a program to load >> ";
 static const char MSG_LOADED[] =                  "1) Loaded %s";
-static const char MSG_FILE_NOT_LOADED[] =         "1) File not found. Please try again.";
+static const char MSG_FILE_NOT_LOADED[] =         "1) File not found. Enter a new filename >> ";
 static const char MSG_STEP[] =                    "3) Stepped";
 static const char MSG_STEP_NO_FILE[] =            "3) No file loaded yet!";
 static const char MSG_RUNNING_CODE[] =            "4) Running code";
@@ -216,6 +216,9 @@ void display_monitor_print_output(char ch)
     }
 }
 
+/*
+ *
+ */
 char display_monitor_get_input()
 {
     int prev_active_window = active_window;
@@ -239,6 +242,9 @@ char display_monitor_get_input()
     return input_ch;
 }
 
+/* 
+ *
+ */
 void display_monitor_get_file_name(char *input_file_name)
 {
      print_message(MSG_LOAD, NULL);
@@ -250,26 +256,35 @@ void display_monitor_get_file_name(char *input_file_name)
     noecho();          
 }
 
+/* 
+ *
+ */
+void display_monitor_get_file_error(char *input_file_name)
+{
+    print_message(MSG_FILE_NOT_LOADED, NULL);
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_FILE_NOT_LOADED) + 4);
+    echo();
+    getstr(input_file_name);
+    noecho();     
+}
+
+/* 
+ *
+ */
 void print_window_titles()
 {
     /** Print a border around the windows and print a title */
     print_title(menu_windows[REG], 1, "Registers", (active_window == REG) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(menu_windows[REG], 2, 0, ACS_LTEE);
     mvwhline(menu_windows[REG], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[REG], 2, REG_PANEL_WIDTH - 1, ACS_RTEE);
-        box(reg_menu_win, 0, 0); */
 
     print_title(menu_windows[MEM], 1, "Memory", (active_window == MEM) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(menu_windows[MEM], 2, 0, ACS_LTEE);
     mvwhline(menu_windows[MEM], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[MEM], 2, MEM_PANEL_WIDTH - 1, ACS_RTEE);
-        box(mem_menu_win, 0, 0); */
 
     print_title(menu_windows[CPU], 1, "CPU Registers", (active_window == CPU) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(menu_windows[CPU], 2, 0, ACS_LTEE);
     mvwhline(menu_windows[CPU], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[CPU], 2, CPU_PANEL_WIDTH - 1, ACS_RTEE);
-        box(cpu_menu_win, 0, 0); */
 
     /* Refresh the menus */
     for (i = 0; i < 3; i++)
@@ -280,7 +295,9 @@ void print_window_titles()
     refresh();
 }
 
-/** Prints the title of a window */
+/* 
+ *
+ */
 void print_title(WINDOW *win, int y, char *string, chtype color)
 {
     if (win == NULL)
@@ -291,8 +308,10 @@ void print_title(WINDOW *win, int y, char *string, chtype color)
     refresh();
 }
 
-/** Draws the input and output windows with title. This method is called when the display
- *  monitor is first created, and every time input or output is erased from the screen */
+/*
+ * Draws the input and output windows with title. This method is called when the display
+ * monitor is first created, and every time input or output is erased from the screen. 
+ */
 void draw_io_window(WINDOW *window, char *title)
 {
     box(window, 0, 0);
@@ -300,6 +319,9 @@ void draw_io_window(WINDOW *window, char *title)
     wrefresh(window);
 }
 
+/* 
+ *
+ */
 void save_menu_indicies()
 {
     for (i = 0; i < 3; i++)
@@ -313,6 +335,9 @@ void save_menu_indicies()
     }
 }
 
+/* 
+ * This function restores the menu indicies 
+ */
 void restore_menu_indicies()
 {
     for (i = 0; i < 3; i++)
@@ -322,9 +347,11 @@ void restore_menu_indicies()
     refresh();
 }
 
-/** Updates the Ncurses window each time this function is called. The arrays containing
- *  menu data are all rebuilt, the menus are reinstantiated, positioned, and posted to the
- *  windows. */
+/* 
+ * This function updates the Ncurses window each time this function is called. The arrays containing
+ * menu data are all rebuilt, the menus are reinstantiated, positioned, and posted to the
+ * windows. 
+ */
 void display_monitor_update(CPU_p cpu)
 {
     save_menu_indicies();
@@ -371,7 +398,7 @@ void display_monitor_update(CPU_p cpu)
     sprintf(cpu_strings[5].description, "x%04X", cpu->mdr);
     sprintf(cpu_strings[6].label, "CC N:");
     sprintf(cpu_strings[6].description, "%d", cpu->ccN);
-    sprintf(cpu_strings[7].label, " "); /* Inserting a blank line so CC looks better */
+    sprintf(cpu_strings[7].label, " ");         /* Inserting a blank line so CC looks better */
     sprintf(cpu_strings[7].description, " ");
     sprintf(cpu_strings[8].label, "CC Z:");
     sprintf(cpu_strings[8].description, "%d", cpu->ccZ);
@@ -399,13 +426,17 @@ void display_monitor_update(CPU_p cpu)
         set_menu_win(menus[i], menu_windows[i]);
     }
 
-    /* The the menu sub ??? and its format menu_format is number of rows, columns for the
-     * list's visible contents and scrolls the rest of the list. */
+    /* 
+     * The the menu sub ??? and its format menu_format is number of rows, columns for the
+     * list's visible contents and scrolls the rest of the list. 
+     */
     set_menu_sub(menus[REG], derwin(menu_windows[REG], REG_PANEL_HEIGHT - 4, REG_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(menus[REG], REG_PANEL_HEIGHT - 4, 1);
+
     /* Memories... */
     set_menu_sub(menus[MEM], derwin(menu_windows[MEM], MEM_PANEL_HEIGHT - 4, MEM_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(menus[MEM], MEM_PANEL_HEIGHT - 4, 1);
+
     /* CPU... */
     set_menu_sub(menus[CPU], derwin(menu_windows[CPU], CPU_PANEL_HEIGHT - 4, CPU_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(menus[CPU], MEM_PANEL_HEIGHT - 4, 2);
@@ -436,8 +467,10 @@ void display_monitor_update(CPU_p cpu)
     restore_menu_indicies();
 }
 
-/** The main logic loop for the debug monitor. Listens for user keystrokes and performs
- *  debugging operations */
+/*
+ * The main logic loop for the debug monitor. Listens for user keystrokes and performs
+ *  debugging operations.
+ */
 int display_monitor_loop(CPU_p cpu)
 {
     /* Set selected item in memory to be current PC */
@@ -452,7 +485,7 @@ int display_monitor_loop(CPU_p cpu)
 
     /** This variable is used to return information about the user's selection back to the
      *  LC-3 */
-    char monitor_return = MONITOR_UPDATE;
+    char monitor_status = MONITOR_UPDATE;
 
     if (is_halted) {
         print_message(MSG_CPU_HALTED, NULL);
@@ -472,20 +505,20 @@ int display_monitor_loop(CPU_p cpu)
             break;            
         case 49:
             /* User selected 1) to load a file */
-            monitor_return = MONITOR_LOAD;
+            monitor_status = MONITOR_LOAD;
             break;
         case 51:
             /* User selected 3) to step through code */
             if (!file_loaded)
             {
                 print_message(MSG_STEP_NO_FILE, NULL);
-                monitor_return = MONITOR_NO_RETURN;
+                monitor_status = MONITOR_NO_RETURN;
             } else if (is_halted) {
                 print_message(MSG_CPU_HALTED_STEP, NULL);
-                monitor_return = MONITOR_NO_RETURN;
+                monitor_status = MONITOR_NO_RETURN;
             } else {
                 print_message(MSG_STEP, NULL);
-                monitor_return = MONITOR_STEP;
+                monitor_status = MONITOR_STEP;
             }
             break;
         case 52:
@@ -493,13 +526,13 @@ int display_monitor_loop(CPU_p cpu)
             if (!file_loaded)
             {
                 print_message(MSG_RUN_NO_FILE, NULL);
-                monitor_return = MONITOR_NO_RETURN;
+                monitor_status = MONITOR_NO_RETURN;
             } else if (is_halted) {
                 print_message(MSG_CPU_HALTED_RUN, NULL);
-                monitor_return = MONITOR_NO_RETURN;
+                monitor_status = MONITOR_NO_RETURN;
             } else {
                 print_message(MSG_RUNNING_CODE, NULL);
-                monitor_return = MONITOR_RUN;
+                monitor_status = MONITOR_RUN;
             }
             break;
         case 53:
@@ -513,13 +546,13 @@ int display_monitor_loop(CPU_p cpu)
             noecho();
             mem_addr_index = get_mem_address(mem_addr_input);
             set_current_item(menus[MEM], menu_list_items[MEM][mem_addr_index]);     
-            monitor_return = MONITOR_NO_RETURN;
+            monitor_status = MONITOR_NO_RETURN;
             break;
         case 54:
             if (!file_loaded)
             {
                 print_message(MSG_EDIT_MEM_NO_FILE, NULL);
-                monitor_return = MONITOR_NO_RETURN;
+                monitor_status = MONITOR_NO_RETURN;
             }
             /* User selected 6) to edit a memory location */
             print_message(MSG_EDIT_MEM_PROMPT_ADDR, NULL);
@@ -539,14 +572,14 @@ int display_monitor_loop(CPU_p cpu)
             noecho();
             mem_data = get_mem_data(mem_data_input);
             memory[mem_addr_index] = mem_data;
-            monitor_return = MONITOR_UPDATE;
+            monitor_status = MONITOR_UPDATE;
             break;            
         case 56:
             /* User selected 8) to set/unset a breakpoint */
             if (!file_loaded)
             {
                 print_message(MSG_SET_UNSET_BRKPT_NO_FILE, NULL);
-                monitor_return = MONITOR_NO_RETURN;
+                monitor_status = MONITOR_NO_RETURN;
             }
             else 
             {
@@ -563,31 +596,31 @@ int display_monitor_loop(CPU_p cpu)
                 display_monitor_update(cpu);
                 restore_menu_indicies();
             }
-            monitor_return = MONITOR_UPDATE;
+            monitor_status = MONITOR_UPDATE;
             break;
         case KEY_DOWN:
             menu_driver(menus[active_window], REQ_DOWN_ITEM);
-            monitor_return = MONITOR_NO_RETURN;
+            monitor_status = MONITOR_NO_RETURN;
             break;
         case KEY_UP:
             menu_driver(menus[active_window], REQ_UP_ITEM);
-            monitor_return = MONITOR_NO_RETURN;
+            monitor_status = MONITOR_NO_RETURN;
             break;
         case KEY_LEFT:
             menu_driver(menus[active_window], REQ_LEFT_ITEM);
-            monitor_return = MONITOR_NO_RETURN;
+            monitor_status = MONITOR_NO_RETURN;
             break;
         case KEY_RIGHT:
             menu_driver(menus[active_window], REQ_RIGHT_ITEM);
-            monitor_return = MONITOR_NO_RETURN;
+            monitor_status = MONITOR_NO_RETURN;
             break;
         case KEY_NPAGE:
             menu_driver(menus[active_window], REQ_SCR_DPAGE);
-            monitor_return = MONITOR_NO_RETURN;
+            monitor_status = MONITOR_NO_RETURN;
             break;
         case KEY_PPAGE:
             menu_driver(menus[active_window], REQ_SCR_UPAGE);
-            monitor_return = MONITOR_NO_RETURN;
+            monitor_status = MONITOR_NO_RETURN;
             break;
         }
 
@@ -598,15 +631,15 @@ int display_monitor_loop(CPU_p cpu)
 
         refresh();
 
-        if (monitor_return != MONITOR_NO_RETURN)
+        if (monitor_status != MONITOR_NO_RETURN)
         {
-            return monitor_return;
+            return monitor_status;
         }
 
     }
 
-    monitor_return = MONITOR_QUIT;
-    return monitor_return;
+    monitor_status = MONITOR_QUIT;
+    return monitor_status;
 }
 
 unsigned int get_mem_address(char *mem_string) {

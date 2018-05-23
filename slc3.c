@@ -41,17 +41,30 @@ int main(int argc, char *argv[])
         return 1;
     lc3_init(cpu);
 
-    /* If there is an argument, attempt to use it first as the file name. 
-        Example file name: "/hex/HW3.hex" */
-    
+    /* 
+     * If there is an argument, attempt to use it first as the file name. 
+     * Example file name: "/hex/HW3.hex" 
+     */    
     if (argc > 1)
     {
         strcpy(input_file_name, argv[1]);
+        // file_ptr = open_file(input_file_name);
+        // while (file_ptr == NULL) 
+        // {
+            // printf("File not found. Enter a file name: ");
+            // scanf("%s", input_file_name);
+        // }
+        display_monitor_get_file_name(input_file_name);
         file_ptr = open_file(input_file_name);
-        while (file_ptr == NULL) 
+        if (file_ptr == NULL) 
         {
-            printf("File not found. Enter a file name: ");
-            scanf("%s", input_file_name);
+            do 
+            {
+                printf("File not found. Enter a file name: ");
+                scanf("%s", input_file_name);
+                file_ptr = open_file(input_file_name);
+            }
+            while (file_ptr == NULL);
         }
         load_file_to_memory(cpu, open_file(input_file_name));
     }
@@ -75,12 +88,17 @@ int main(int argc, char *argv[])
         /* Case when the display monitor is loading a file. With the file pointer
            collected by the display monitor, call CPU to load the contents of that file. */
         case MONITOR_LOAD:
-            do 
+            display_monitor_get_file_name(input_file_name);
+            file_ptr = open_file(input_file_name);
+            if (file_ptr == NULL) 
             {
-                //print_message("File not found, please try again.", NULL);
-                display_monitor_get_file_name(input_file_name);
-                file_ptr = open_file(input_file_name);
-            } while (file_ptr == NULL);
+                do 
+                {
+                    display_monitor_get_file_error(input_file_name);
+                    file_ptr = open_file(input_file_name);
+                }
+                while (file_ptr == NULL);
+            }
             load_file_to_memory(cpu, open_file(input_file_name));     
             break;
         /* Case when the display monitor is simply stepping through a loaded file. */
@@ -266,11 +284,11 @@ void controller(CPU_p cpu)
                 sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
                 break;
             case TRAP:
-                vector = cpu->ir & MASK_TRAPVECT8; // No shift needed.
+                vector = cpu->ir & MASK_TRAPVECT8; /* No shift needed. */
                 break;
-            case ST: // Same as LD.
+            case ST: 
+                /* Same functionality as LD instruction; continue. */
             case STR:
-                // Book page 124.
                 cpu->mdr = cpu->registers[dr];
                 break;
             case JMP:
@@ -284,17 +302,17 @@ void controller(CPU_p cpu)
                 bit11 = (cpu->ir & MASK_BIT11) >> BITSHIFT_BIT11;
                 cpu->registers[7] = cpu->pc;
                 if (bit11 == 0)
-                { //JSRR
-                    sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1;
+                {
+                    sr1 = (cpu->ir & MASK_SR1) >> BITSHIFT_SR1; /* JSRR */
                     cpu->pc = cpu->registers[sr1];
                 }
                 else
-                { //JSR
-                    cpu->pc += offset;
+                {
+                    cpu->pc += offset; /* JSR */
                 }
                 break;
             }
-            state = EXECUTE; // Moving to next state.
+            state = EXECUTE; /* Moving to next state. */
             break;
 
         /* The fifth state of the instruction cycle, the "execute" state. */

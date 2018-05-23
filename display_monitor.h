@@ -32,6 +32,7 @@ int display_monitor_destroy();
 char display_monitor_get_input();
 void display_monitor_update(CPU_p);
 void display_monitor_get_file_name(char *input_file_name);
+void display_monitor_get_file_error(char *input_file_name);
 void display_monitor_print_output(char);
 void print_message(const char *message, char *arg);
 

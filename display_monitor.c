@@ -408,6 +408,13 @@ void display_monitor_update(CPU_p cpu)
     save_menu_indicies();
     display_monitor_free();
 
+    // Unique display of the mar as per the book's LC3 simulator.
+    int marDisplay = 0;
+    if (cpu->pc > 0)
+    {
+        marDisplay = cpu->mar + ADDRESS_START;
+    }
+
     for (i = 0; i < item_counts[REG]; ++i)
     {
         sprintf(reg_strings[i].label, "R%d:", i);
@@ -436,7 +443,7 @@ void display_monitor_update(CPU_p cpu)
 
     /* Create items for the CPU */
     sprintf(cpu_strings[0].label, "PC:");
-    sprintf(cpu_strings[0].description, "x%04X", cpu->pc);
+    sprintf(cpu_strings[0].description, "x%04X", cpu->pc + ADDRESS_START);
     sprintf(cpu_strings[1].label, "IR:");
     sprintf(cpu_strings[1].description, "x%04X", cpu->ir);
     sprintf(cpu_strings[2].label, "ALU A:");
@@ -444,7 +451,7 @@ void display_monitor_update(CPU_p cpu)
     sprintf(cpu_strings[3].label, "ALU B:");
     sprintf(cpu_strings[3].description, "x%04X", cpu->alu_b);
     sprintf(cpu_strings[4].label, "MAR:");
-    sprintf(cpu_strings[4].description, "x%04X", cpu->mar);
+    sprintf(cpu_strings[4].description, "x%04X", marDisplay);
     sprintf(cpu_strings[5].label, "MDR:");
     sprintf(cpu_strings[5].description, "x%04X", cpu->mdr);
     sprintf(cpu_strings[6].label, "CC N:");

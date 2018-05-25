@@ -47,21 +47,43 @@
 #define LDR 6 									/* 0110 0000 0000 0000 */
 #define LEA 14
 #define ST 3
-#define STR 7 									/* 0111 0000 0000 0000 */
+#define STR 7 // 0111 0000 0000 0000
 
-/* Mask value constants. */
-#define MASK_OPCODE 61440	 					/* 1111 0000 0000 0000 */
-#define MASK_DR 3584		 					/* 0000 1110 0000 0000 */
-#define MASK_SR1 448		 					/* 0000 0001 1100 0000 */
-#define MASK_SR2 7			 					/* 0000 0000 0000 0111 */
-#define MASK_PCOFFSET11 2047 					/* 0000 0111 1111 1111 */
-#define MASK_PCOFFSET9 511   					/* 0000 0001 1111 1111 */
-#define MASK_PCOFFSET6 63						/* 0000 0000 0011 1111 */
-#define MASK_TRAPVECT8 255  					/* 0000 0000 1111 1111 */
-#define MASK_BIT11 2048				 			/* 0000 1000 0000 0000 */
-#define MASK_BIT5 32		 					/* 0000 0000 0010 0000 */
-#define MASK_IMMED5 31		 					/* 0000 0000 0001 1111 */
-#define MASK_NZP 3584		 					/* 0000 1110 0000 0000 */
+/* Other Program Constants */
+#define NUM_OF_BITS 16
+#define NUM_OF_INSTRUCTIONS 6
+#define NUM_OF_REGISTERS 8
+#define NUM_OF_MEM_BANKS 512
+
+#define FILENAME_SIZE 200
+#define STRING_SIZE 200
+#define OUTPUT_LINE_NUMBER 24
+#define OUTPUT_COL_NUMBER 8
+#define OUTPUT_AREA_DEPTH 6
+#define ADDRESS_START 0x3000
+#define MAX_HEX_BITS 4
+#define MAX_BIN_BITS 16
+
+#define FETCH 0
+#define DECODE 1
+#define EVAL_ADDR 2
+#define FETCH_OP 3
+#define EXECUTE 4
+#define STORE 5
+
+#define MASK_OPCODE 61440	// 1111 0000 0000 0000
+#define MASK_DR 3584		 // 0000 1110 0000 0000
+#define MASK_SR1 448		 // 0000 0001 1100 0000
+#define MASK_SR2 7			 // 0000 0000 0000 0111
+#define MASK_PCOFFSET11 2047 // 0000 0111 1111 1111
+#define MASK_PCOFFSET9 511   // 0000 0001 1111 1111
+#define MASK_PCOFFSET6 63	// 0000 0000 0011 1111
+#define MASK_TRAPVECT8 255   // 0000 0000 1111 1111
+#define MASK_BIT11 2048		 // 0000 1000 0000 0000
+#define MASK_BIT5 32		 // 0000 0000 0010 0000
+#define MASK_IMMED5 31		 // 0000 0000 0001 1111
+#define MASK_NZP 3584		 // 0000 1110 0000 0000
+
 #define MASK_CC_N 7
 #define MASK_CC_Z 5
 #define MASK_CC_P 1

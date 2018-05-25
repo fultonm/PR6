@@ -506,7 +506,7 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
             break;
         case 52:
             /* User selected 4) to run code */
-            if (lc3_snapshot.file_loaded) {
+            if (lc3_snapshot.file_loaded == FALSE) {
                 print_message(MSG_RUN_NO_FILE, NULL);
                 continue;
             } else if (lc3_snapshot.is_halted) {
@@ -533,7 +533,7 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
             continue;
             break;
         case 54:
-            if (lc3_snapshot.file_loaded) {
+            if (lc3_snapshot.file_loaded == FALSE) {
                 print_message(MSG_EDIT_MEM_NO_FILE, NULL);
                 continue;
             }

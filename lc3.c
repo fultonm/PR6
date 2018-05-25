@@ -250,7 +250,7 @@ void lc3_store_jmp(lc3_p lc3) {
 void lc3_eval_addr_jsr(lc3_p lc3) {
     /** Microstate 4 */
     bool_t imm_mode = get_jsr_imm_mode(lc3);
-    if (imm_mode = TRUE) {
+    if (imm_mode == TRUE) {
         /** Microstate 21 */
         pc_offset_11_t offset = get_pc_offset_11(lc3);
         word_t pc = cpu_get_pc(lc3->cpu);
@@ -603,7 +603,9 @@ void initialize_intrastate(lc3_p lc3) {
 
 /** Fetches the opcode from the IR */
 opcode_t fetch_opcode(lc3_p lc3) {
-    return (opcode_t)(cpu_get_ir(lc3->cpu) & MASK_OPCODE) >> BITSHIFT_OPCODE;
+    /** No masking needed */
+    opcode_t opcode = cpu_get_ir(lc3->cpu) >> BITSHIFT_OPCODE;
+    return opcode;
 }
 
 /** Fetches the destination register from the IR */

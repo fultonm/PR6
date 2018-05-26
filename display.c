@@ -32,6 +32,9 @@
 #define IO_PANEL_HEIGHT 5
 #define HEIGHT_PADDING 2
 
+#define OUTPUT_CONSOLE_LINES 3
+#define OUTPUT_CONSOLE_COLS 64
+
 #define CPU_ELEMENTS_COUNT 10
 
 static const char MSG_CPU_HALTED[] = "CPU halted :*)";
@@ -70,8 +73,9 @@ typedef struct display_t {
     int saved_menu_index[3];
     int active_window;
     int c, i;
-    char output_console[72];
-    unsigned char output_console_ptr;
+    char console_content[OUTPUT_CONSOLE_LINES][OUTPUT_CONSOLE_COLS];
+    unsigned char console_line_ptr;
+    unsigned char console_col_ptr;
 
     bool breakpoints[MEMORY_SIZE];
 } display_t, *display_p;
@@ -125,16 +129,19 @@ int initialize_display(display_p disp) {
     keypad(stdscr, TRUE);
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_CYAN, COLOR_BLACK);
+    init_pair(3, COLOR_YELLOW, COLOR_BLACK);
 
     /* Stores the size of each array */
     disp->item_counts[INDEX_REG] = REGISTER_SIZE;
     disp->item_counts[INDEX_MEM] = MEMORY_SIZE;
-    char display_mem_input[6];
     disp->item_counts[CPU] = CPU_ELEMENTS_COUNT;
 
     disp->saved_menu_index[INDEX_REG] = 0;
     disp->saved_menu_index[INDEX_MEM] = 0;
     disp->saved_menu_index[CPU] = 0;
+
+    disp->console_line_ptr = 0;
+    disp->console_col_ptr = 0;
 
     disp->menu_list_items[INDEX_REG] =
         (ITEM **)calloc(disp->item_counts[INDEX_REG] + 1, sizeof(ITEM *));
@@ -157,9 +164,15 @@ int initialize_display(display_p disp) {
     disp->input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
                                 MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(disp->input_window, "Input");
-    disp->output_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
+    disp->output_window = newwin(IO_PANEL_HEIGHT + OUTPUT_CONSOLE_LINES - 1,
+                                 MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
                                  MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(disp->output_window, "Output");
+
+    for (i = 0; i < OUTPUT_CONSOLE_LINES; i++) {
+        memset(disp->console_content[i], '\0', OUTPUT_CONSOLE_COLS);
+    }
+
     return 0;
 }
 
@@ -201,27 +214,56 @@ void print_message(const char *message, char *arg) {
 /** Clears the message displayed just below the list of available user
  * operations */
 void clear_line(int line) {
-    move(line, 0);
+    move(line, 1);
     clrtoeol();
 }
 
 /** Prints output resulting from the LC-3 */
 void display_print_output(display_p disp, char ch) {
-    if (ch != '\n') {
-        disp->output_console[disp->output_console_ptr] = ch;
-        disp->output_console[++(disp->output_console_ptr)] = '\0';
-        /** Position the message */
-        attron(COLOR_PAIR(2));
+    /* Clear the whole output window */
+    wclrtobot(disp->output_window);
+    int i;
+    /* If the character is a new-line, we'll shift all the lines up and clear
+    the last line */
+    if (ch == '\n') {
+        if (disp->console_line_ptr == OUTPUT_CONSOLE_LINES - 1) {
 
-        mvprintw(MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT * 2 + HEIGHT_PADDING, 6, "%s",
-                 disp->output_console);
-        attroff(COLOR_PAIR(2));
+            for (i = 0; i < OUTPUT_CONSOLE_LINES - 1; i++) {
+                strcpy(disp->console_content[i], disp->console_content[i + 1]);
+            }
+        }
+        /* Unless we have less than 3 lines written so far */
+        else {
+            disp->console_line_ptr++;
+        }
+        disp->console_col_ptr = 0;
+        memset(disp->console_content[disp->console_line_ptr], '\0', OUTPUT_CONSOLE_COLS);
     } else {
-        disp->output_console_ptr = 0;
-        disp->output_console[disp->output_console_ptr] = '\0';
-        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-        draw_io_window(disp->output_window, "Output");
+        /* Write the character to the correct position.. duh.. */
+        disp->console_content[disp->console_line_ptr][disp->console_col_ptr] = ch;
+        if (disp->console_col_ptr < OUTPUT_CONSOLE_COLS - 1) {
+            /* Increment the current column */
+            disp->console_col_ptr++;
+        }
     }
+    /* If the character is a null-terminator we actually want to decrement the
+    pointer. This is because the next character written might want to be on the
+    same line (i.e. collecting user input on the same line after a prompt.) The
+    user input will overwrite the null-terminator, [[TODO: Then there will be no null
+    terminator after a PUTC???]] */
+    if (ch == '\0') {
+        disp->console_col_ptr--;
+    }
+
+    /** Position the message */
+    for (i = 0; i < OUTPUT_CONSOLE_LINES; i++) {
+        wattron(disp->output_window, COLOR_PAIR(3));
+        mvwprintw(disp->output_window, 2 + i, 2, "%s", disp->console_content[i]);
+        wattroff(disp->output_window, COLOR_PAIR(3));
+    }
+
+    draw_io_window(disp->output_window, "Output");
+    refresh();
 }
 
 char display_get_input(display_p disp) {
@@ -280,8 +322,6 @@ void print_window_titles(display_p disp) {
 
 /** Prints the title of a window */
 void print_title(WINDOW *win, int y, char *string, chtype color) {
-    if (win == NULL)
-        win = stdscr;
     wattron(win, color);
     mvwprintw(win, y, 4, "%s", string);
     wattroff(win, color);
@@ -330,7 +370,8 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     int i;
     for (i = 0; i < disp->item_counts[INDEX_REG]; ++i) {
         sprintf(disp->reg_strings[i].label, "R%d:", i);
-        sprintf(disp->reg_strings[i].description, "x%04X", lc3_snapshot.cpu_snapshot.registers[i]);
+        sprintf(disp->reg_strings[i].description, "x%04X",
+                lc3_snapshot.cpu_snapshot.registers[i]);
         disp->menu_list_items[INDEX_REG][i] =
             new_item(disp->reg_strings[i].label, disp->reg_strings[i].description);
     }
@@ -444,8 +485,7 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
 display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     /* Set selected item in memory to be current PC */
     size_t pc_index = get_index_from_address(lc3_snapshot.cpu_snapshot.pc);
-    set_current_item(disp->menus[INDEX_MEM],
-                     disp->menu_list_items[INDEX_MEM][pc_index]);
+    set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][pc_index]);
     display_update(disp, lc3_snapshot);
 
     /* Input vars used for 5) Show Mem, 6)Edit Mem, 8) Set/Unset breakpoint */

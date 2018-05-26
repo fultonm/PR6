@@ -22,7 +22,7 @@
 #define R6 6
 #define R7 7
 
-#define MASK_CC_Z 5 /* 010 */
+#define MASK_CC_Z 2 /* 010 */
 #define MASK_CC_P 1 /* 001 */
 
 #define BITSHIFT_CC_N 2

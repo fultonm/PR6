@@ -142,17 +142,17 @@ void lc3_fetch_op_add(lc3_p lc3) {
     /** Microstate 1*/
     if (get_imm_mode(lc3) == TRUE) {
         reg_addr_t sr1 = get_sr1(lc3);
+        word_t sr1_data = cpu_get_register(lc3->cpu, sr1);
+        imm_5_t imm_5 = get_imm_5(lc3);
+        alu_load_sr1(lc3->alu, sr1_data);
+        alu_load_sr2(lc3->alu, imm_5);
+    } else {
+        reg_addr_t sr1 = get_sr1(lc3);
         reg_addr_t sr2 = get_sr2(lc3);
         word_t sr1_data = cpu_get_register(lc3->cpu, sr1);
         word_t sr2_data = cpu_get_register(lc3->cpu, sr2);
         alu_load_sr1(lc3->alu, sr1_data);
         alu_load_sr2(lc3->alu, sr2_data);
-    } else {
-        reg_addr_t sr1 = get_sr1(lc3);
-        word_t sr1_data = cpu_get_register(lc3->cpu, sr1);
-        imm_5_t imm_5 = get_imm_5(lc3);
-        alu_load_sr1(lc3->alu, sr1_data);
-        alu_load_sr2(lc3->alu, imm_5);
     }
 }
 
@@ -175,17 +175,17 @@ void lc3_fetch_op_and(lc3_p lc3) {
     /** Microstate 5 */
     if (get_imm_mode(lc3) == TRUE) {
         reg_addr_t sr1 = get_sr1(lc3);
+        word_t sr1_data = cpu_get_register(lc3->cpu, sr1);
+        imm_5_t imm_5 = get_imm_5(lc3);
+        alu_load_sr1(lc3->alu, sr1_data);
+        alu_load_sr2(lc3->alu, imm_5);
+    } else {
+        reg_addr_t sr1 = get_sr1(lc3);
         reg_addr_t sr2 = get_sr2(lc3);
         word_t sr1_data = cpu_get_register(lc3->cpu, sr1);
         word_t sr2_data = cpu_get_register(lc3->cpu, sr2);
         alu_load_sr1(lc3->alu, sr1_data);
         alu_load_sr2(lc3->alu, sr2_data);
-    } else {
-        reg_addr_t sr1 = get_sr1(lc3);
-        word_t sr1_data = cpu_get_register(lc3->cpu, sr1);
-        imm_5_t imm_5 = get_imm_5(lc3);
-        alu_load_sr1(lc3->alu, sr1_data);
-        alu_load_sr2(lc3->alu, imm_5);
     }
 }
 
@@ -249,8 +249,7 @@ void lc3_store_jmp(lc3_p lc3) {
 /** JSR evaulate address */
 void lc3_eval_addr_jsr(lc3_p lc3) {
     /** Microstate 4 */
-    bool_t imm_mode = get_jsr_imm_mode(lc3);
-    if (imm_mode == TRUE) {
+    if (get_jsr_imm_mode(lc3) == TRUE) {
         /** Microstate 21 */
         pc_offset_11_t offset = get_pc_offset_11(lc3);
         word_t pc = cpu_get_pc(lc3->cpu);

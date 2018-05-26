@@ -16,6 +16,15 @@
 #include "lc3.h"
 #include "slc3.h"
 
+/** Allows the display to edit memory */
+void prompt_edit_mem(lc3_p);
+
+/** Returns a non-null pointer to a (hopefully) hex file */
+void prompt_load_file_display(lc3_p);
+
+/** Prompt from the terminal for a file if one wasn't specified in the arguments */
+void prompt_load_file_terminal(lc3_p, int, char *[]);
+
 /** The main instruction cycle control flow */
 void controller(lc3_p, display_p);
 
@@ -25,8 +34,10 @@ void trap(display_p, lc3_p, word_t);
 /** Opens a file with the given file name */
 FILE *open_file(char *);
 
-/*
- * Main method for the LC-3 Emulator.
+/** This function allows for the loading of hex files into memory. */
+void load_file_to_memory(lc3_p lc3, FILE *file);
+
+/** Main method for the LC-3 Emulator.
  *
  * The command line argument passed in is what will be populated into
  * the LC-3's memory at runtime. For example, if the program is run with
@@ -38,29 +49,8 @@ int main(int argc, char *argv[]) {
     /** Create and initialze the LC3 object */
     lc3_p lc3 = lc3_create();
 
-    /** The char array used to store the hex file's name */
-    char input_file_name[80];
-    /** The pointer to the file on disk */
-    FILE *file_ptr;
-
-    /*
-     * If there is an argument, attempt to use it first as the file name.
-     * Example file name: "/hex/HW3.hex"
-     */
-    if (argc > 1) {
-        if (argc > 2) {
-            printf("Too many arguments supplied. The first argument will be treated as a file "
-                   "name.\n");
-        }
-        file_ptr = open_file(argv[1]);
-        while (file_ptr == NULL) {
-            printf("File not found. Enter a file name: ");
-            scanf("%s", input_file_name);
-            file_ptr = open_file(input_file_name);
-        }
-        load_file_to_memory(lc3, open_file(input_file_name));
-    }
-
+    /** Prompt from the terminal for a file if one wasn't specified in the arguments */
+    prompt_load_file_terminal(lc3, argc, argv);
 
     /** Create and initialize the Display object */
     display_p disp = display_create();
@@ -77,14 +67,11 @@ int main(int argc, char *argv[]) {
      * LC-3 */
     while (result != DISPLAY_QUIT) {
         switch (result) {
+        case DISPLAY_EDIT_MEM:
+            prompt_edit_mem(lc3);
+            break;
         case DISPLAY_LOAD:
-            display_get_file_name(input_file_name);
-            file_ptr = open_file(input_file_name);
-            while (file_ptr == NULL) {
-                display_get_file_error(input_file_name);
-                file_ptr = open_file(input_file_name);
-            }
-            load_file_to_memory(lc3, open_file(input_file_name));
+            prompt_load_file_display(lc3);
             break;
         case DISPLAY_STEP:
             if (lc3_is_halted(lc3) == FALSE) {
@@ -92,16 +79,15 @@ int main(int argc, char *argv[]) {
             }
             break;
         case DISPLAY_RUN:
-            if (lc3_is_halted(lc3) == FALSE) {
-                do {
-                    /** Run through the controller for this instruction */
-                    controller(lc3, disp);
-                    /** Update the display with new information (but don't wait for a keystroke) */
-                    display_update(disp, lc3_get_snapshot(lc3));
-                    /** Sleep for 5 milliseconds */
-                    usleep(5000);
-                } while (lc3_is_halted(lc3) == FALSE &&
-                         display_has_breakpoint(disp, lc3_get_pc(lc3)) == FALSE);
+            while (lc3_is_halted(lc3) == FALSE &&
+                   display_has_breakpoint(disp, lc3_get_pc(lc3)) == FALSE) {
+                /** Run through the controller for this instruction */
+                controller(lc3, disp);
+                /** Update the display with new information (but don't wait for a
+                 * keystroke) */
+                display_update(disp, lc3_get_snapshot(lc3));
+                /** Sleep for 5 milliseconds */
+                usleep(5000);
             }
         }
         result = display_loop(disp, lc3_get_snapshot(lc3));
@@ -112,6 +98,54 @@ int main(int argc, char *argv[]) {
     lc3_destroy(lc3);
 
     return 0;
+}
+
+/** Prompt from and loads a hex file using the regular terminal before Display is loaded */
+void prompt_load_file_terminal(lc3_p lc3, int argc, char *argv[]) {
+    /** The char array used to store the hex file's name */
+    char input_file_name[80];
+    /** The pointer to the file on disk */
+    FILE *file_ptr;
+    /*
+     * If there is an argument, attempt to use it first as the file name.
+     * Example file name: "/hex/HW3.hex"
+     */
+    if (argc > 1) {
+        if (argc > 2) {
+            printf("Too many arguments supplied. The first argument will be treated as a file "
+                   "name.\n");
+        }
+        file_ptr = open_file(argv[1]);
+        while (file_ptr == NULL) {
+            printf("File not found. Enter a file name: ");
+            scanf("%s", input_file_name);
+            file_ptr = open_file(input_file_name);
+        }
+        load_file_to_memory(lc3, file_ptr);
+    }
+}
+
+/** Prompts for and loads a hex file */
+void prompt_load_file_display(lc3_p lc3) {
+    char user_input[64];
+    display_get_file_name(user_input, sizeof(user_input)/sizeof(user_input[0]));
+    FILE* file_ptr = open_file(user_input);
+    while (file_ptr == NULL) {
+        display_get_file_error(user_input, sizeof(user_input)/sizeof(user_input[0]));
+        file_ptr = open_file(user_input);
+    }
+    load_file_to_memory(lc3, open_file(user_input));
+}
+
+/** Allows the display to edit memory */
+void prompt_edit_mem(lc3_p lc3) {
+    char address_input[6];
+    display_edit_mem_get_address(address_input);
+    word_t address = get_word_from_string(address_input);
+    char data_input[6];
+    display_edit_mem_get_data(data_input, address_input);
+    word_t data = get_word_from_string(data_input);
+    lc3_set_memory(lc3, address, data);
 }
 
 /*
@@ -324,11 +358,7 @@ void trap(display_p disp, lc3_p lc3, word_t vector) {
     }
 }
 
-
-
-/*
- * This function will allow the opening of files
- */
+/** This function will allow the opening of files */
 FILE *open_file(char *file_name) {
     /* Attempt to open file. If file isn't found or otherwise null, allow user to
        press enter to return to main program of the menu. */
@@ -336,9 +366,8 @@ FILE *open_file(char *file_name) {
     input_file_pointer = fopen(file_name, "r");
     return input_file_pointer;
 }
-/*
- * This function allows for the loading of hex files into memory.
- */
+
+/** This function allows for the loading of hex files into memory. */
 void load_file_to_memory(lc3_p lc3, FILE *file) {
     char line[8];
     fgets(line, sizeof(line), file);

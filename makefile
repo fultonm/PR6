@@ -2,7 +2,7 @@ CC     := gcc
 SRC    := .
 OBJ    := .
 LIBS   := -lm -lmenu -lncurses
-CFLAGS := -g
+CFLAGS := -g -Wall
 
 
 SOURCES := $(wildcard $(SRC)/*.c)

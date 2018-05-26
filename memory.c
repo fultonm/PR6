@@ -1,10 +1,9 @@
 
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "memory.h"
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /** The time (in milliseconds) the memory will take to read and write */
 #define MEM_WRITE_DELAY 50

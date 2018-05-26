@@ -78,7 +78,8 @@ void lc3_destroy(lc3_p);
 /** Gets a snapshot of the LC3 data for debugging or display purposes */
 const lc3_snapshot_t lc3_get_snapshot(lc3_p);
 
-/** Gets/sets the starting address for the PC according to the first line in the loaded hex file */
+/** Gets/sets the starting address for the PC according to the first line in the loaded hex
+ * file */
 word_t lc3_get_starting_address(lc3_p);
 void lc3_set_starting_address(lc3_p, word_t);
 

@@ -10,9 +10,9 @@
 #ifndef SLC3_H
 #define SLC3_H
 
-#include <stdio.h>
 #include "global.h"
 #include "lc3.h"
+#include <stdio.h>
 
 /* Other Program Constants */
 #define NUM_OF_BITS 16
@@ -41,9 +41,7 @@
 #define TRAP_VECTOR_X22 0x22
 #define TRAP_VECTOR_X25 0x25
 
-/* Function Definitions */
-void handle_user_input(lc3_p);
-void load_file_to_memory(lc3_p, FILE *);
-FILE *open_file2(char *);
+/** Allows the Display to edit memory */
+void slc3_edit_memory_handler(lc3_p, word_t address, word_t data);
 
 #endif

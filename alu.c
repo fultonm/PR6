@@ -1,8 +1,8 @@
 
 
-#include <stdlib.h>
 #include "global.h"
 #include "slc3.h"
+#include <stdlib.h>
 
 typedef struct alu_t {
     word_t sr1;

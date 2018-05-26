@@ -1,9 +1,9 @@
 
+#include "cpu.h"
+#include "global.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "global.h"
-#include "cpu.h"
 
 #define MASK_WORD_T_HIGH_ORDER 32768 /* 1000 0000 0000 0000 */
 #define BITSHIFT_HIGH_ORDER 15
@@ -91,9 +91,7 @@ void cpu_increment_pc(cpu_p cpu) { cpu->pc++; }
 void cpu_increment_pc_by_value(cpu_p cpu, word_t value) { cpu->pc += value; }
 
 /** Sets the PC to a new value */
-void cpu_set_pc(cpu_p cpu, word_t data) {
-    cpu->pc = data;
-}
+void cpu_set_pc(cpu_p cpu, word_t data) { cpu->pc = data; }
 
 /** Returns the current PC */
 word_t cpu_get_pc(cpu_p cpu) { return cpu->pc; }

@@ -11,7 +11,7 @@
 
 #include "display.h"
 #include "global.h"
-#include "lc3.h"
+#include "slc3.h"
 #include <curses.h>
 #include <menu.h>
 #include <signal.h>
@@ -48,8 +48,8 @@ static const char MSG_STEP_NO_FILE[] = "3) No file loaded yet!";
 static const char MSG_RUNNING_CODE[] = "4) Running code";
 static const char MSG_RUN_NO_FILE[] = "4) No file loaded yet!";
 static const char MSG_DISPLAY_MEM[] = "5) Enter the hex address to jump to >> ";
-static const char MSG_EDIT_MEM_PPT_ADDR[] = "6) Enter the hex address to edit >> ";
-static const char MSG_EDIT_MEM_PPT_DATA[] = "6) Enter the hex data to push to %s >> ";
+static const char MSG_EDIT_MEM_ADDR[] = "6) Enter the hex address to edit >> ";
+static const char MSG_EDIT_MEM_DATA[] = "6) Enter the hex data to push to %s >> ";
 static const char MSG_EDIT_MEM_NO_FILE[] = "6) No file loaded yet!";
 static const char MSG_SET_UNSET_BRKPT[] =
     "8) Enter the hex address to set/unset breakpoint >> ";
@@ -93,13 +93,8 @@ void clear_line(int line);
 void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
 void print_window_titles();
-word_t get_word_from_string(char *);
 
-/** Ensure these are at least as big (or equal to) the actual vaues in the CPU.
- * These have +1 because in addition to the actual string representing data in
- * the LC-3, a null
- * value must also be present to signify the end of the array. */
-
+/** Allocates and initializes the Display */
 display_p display_create() {
     display_p disp = calloc(1, sizeof(display_t));
     initialize_display(disp);
@@ -271,6 +266,7 @@ void display_print_output(display_p disp, char ch) {
     refresh();
 }
 
+/** Get input from the console */
 char display_get_input(display_p disp) {
     int prev_active_window = disp->active_window;
 
@@ -293,27 +289,52 @@ char display_get_input(display_p disp) {
     return input_ch;
 }
 
-/*
- *
- */
-void display_get_file_name(char *input_file_name) {
+/** Prompt for a file name */
+void display_get_file_name(char *input_file_name, int size) {
     print_message(MSG_LOAD, NULL);
     /** Move the cursor, turn on echo mode so the user can see their input
      *  then turn it back on after capturing file name input */
     move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
     echo();
-    getstr(input_file_name);
+    getnstr(input_file_name, size);
     noecho();
 }
 
-/*
- *
- */
-void display_get_file_error(char *input_file_name) {
+/** Reprompt for a file name since the last one was an error */
+void display_get_file_error(char *input_file_name, int size) {
     print_message(MSG_FILE_NOT_LOADED, NULL);
     move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_FILE_NOT_LOADED) + 4);
     echo();
-    getstr(input_file_name);
+    getnstr(input_file_name, size);
+    noecho();
+}
+
+/** Let the user know their file input was accepted */
+void display_get_file_success(char *input_file_name) {
+    print_message(MSG_LOADED, input_file_name);
+}
+
+/** Prompts for the address of the memory we will edit */
+void display_edit_mem_get_address(char *input) {
+    /** Prompt the user for the address */
+    print_message(MSG_EDIT_MEM_ADDR, NULL);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing address */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_ADDR) + 4);
+    echo();
+    getstr(input);
+    noecho();
+}
+
+/** Prompts for the data the memory location will be set to. */
+void display_edit_mem_get_data(char *input, char *address) {
+    /** Prompt the user for the data */
+    print_message(MSG_EDIT_MEM_DATA, address);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing address */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_DATA) + strlen(address) + 2);
+    echo();
+    getstr(input);
     noecho();
 }
 
@@ -514,10 +535,6 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
     /* Input vars used for 5) Show Mem, 6)Edit Mem, 8) Set/Unset breakpoint */
     char word_input_raw[6];
     word_t word_input;
-    /* Secondary input vars used for 6) Edit Mem to specify the data to insert at the address
-     */
-    char word_data_input_raw[6];
-    word_t word_data_input;
 
     /** This variable is used to return information about the user's selection
      * back to the LC-3. We load it with whether the current PC is a breakpoint. */
@@ -549,16 +566,6 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
             continue;
         case 49:
             /* User selected 1) to load a file */
-            print_message(MSG_LOAD, NULL);
-            /** Move the cursor, turn on echo mode so the user can see their input
-             *  then turn it back on after capturing file name input */
-            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
-            echo();
-            getstr(load_file_input);
-            noecho();
-
-            clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-            print_message(MSG_LOADED, load_file_input);
             display_return = DISPLAY_LOAD;
             break;
         case 51:
@@ -601,35 +608,14 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
                 disp->menus[INDEX_MEM],
                 disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
             continue;
-            break;
         case 54:
             if (lc3_snapshot.file_loaded == FALSE) {
                 print_message(MSG_EDIT_MEM_NO_FILE, NULL);
                 continue;
             }
             /* User selected 6) to edit a memory location */
-            print_message(MSG_EDIT_MEM_PPT_ADDR, NULL);
-            /** Move the cursor, turn on echo mode so the user can see their input
-             *  then turn it back on after capturing address */
-            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_PPT_ADDR) + 4);
-            echo();
-            getstr(word_input_raw);
-            noecho();
-            word_input = get_word_from_string(word_input_raw);
-            print_message(MSG_EDIT_MEM_PPT_DATA, word_input_raw);
-            /** Move the cursor, turn on echo mode so the user can see their input
-             *  then turn it back on after capturing the data */
-            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
-                 strlen(MSG_EDIT_MEM_PPT_DATA) + strlen(word_input_raw) + 4);
-            echo();
-            getstr(word_data_input_raw);
-            noecho();
-            word_data_input = get_word_from_string(word_data_input_raw);
-            /** TODO: This will not be the correct thing to do here. We need a method in slc3
-             * and ultimately lc3 to set memory. */
-            /*lc3_snapshot.memory_snapsshot.data[mem_addr_index] = mem_data;*/
-            display_update(disp, lc3_snapshot);
-            continue;
+            display_return = DISPLAY_EDIT_MEM;
+            break;
         case 56:
             /* User selected 8) to set/unset a breakpoint */
             if (lc3_snapshot.file_loaded == FALSE) {
@@ -692,13 +678,4 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
 
     /** The only way to break out of the while loop and reach this point is pressing 9 */
     return DISPLAY_QUIT;
-}
-
-/** Returns a 16 bit LC3 word parsed from the specified string */
-word_t get_word_from_string(char *mem_string) {
-    /* A little bit of edge case handling...
-     * x3002 + strlen("x3002") - 4 = 3002
-     * 3002 + strlen("3002") - 4 = 3002 */
-    unsigned short address = strtol(mem_string + strlen(mem_string) - 4, NULL, 16);
-    return (word_t)address;
 }

@@ -36,6 +36,12 @@ int display_destroy(display_p);
 
 char display_get_input(display_p);
 
+void display_get_file_name(char *);
+
+void display_get_file_error(char *);
+
+void print_message(const char *message, char *arg);
+
 void display_print_output(display_p, char);
 
 bool_t display_has_breakpoint(display_p, word_t);

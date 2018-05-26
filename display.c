@@ -1,5 +1,7 @@
-/* LC-3 Emulator
- *
+/* LC-3 Simulator Simulator
+
+ * Contributors: Mike Fulton, Logan Stafford, Enoch Chan
+ * TCSS372 - Computer Architecture - Spring 2018
  * Date: May 2018
  *
  * This a terminal-based program that emulates the low-level functions of the
@@ -40,6 +42,7 @@
 static const char MSG_CPU_HALTED[] = "CPU halted :*)";
 static const char MSG_LOAD[] = "1) Enter a program to load >> ";
 static const char MSG_LOADED[] = "1) Loaded %s";
+static const char MSG_FILE_NOT_LOADED[] = "1) File not found. Enter a new filename >> ";
 static const char MSG_STEP[] = "3) Stepped";
 static const char MSG_STEP_NO_FILE[] = "3) No file loaded yet!";
 static const char MSG_RUNNING_CODE[] = "4) Running code";
@@ -290,28 +293,46 @@ char display_get_input(display_p disp) {
     return input_ch;
 }
 
+/*
+ *
+ */
+void display_get_file_name(char *input_file_name) {
+    print_message(MSG_LOAD, NULL);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing file name input */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
+    echo();
+    getstr(input_file_name);
+    noecho();
+}
+
+/*
+ *
+ */
+void display_get_file_error(char *input_file_name) {
+    print_message(MSG_FILE_NOT_LOADED, NULL);
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_FILE_NOT_LOADED) + 4);
+    echo();
+    getstr(input_file_name);
+    noecho();
+}
+
 void print_window_titles(display_p disp) {
     /** Print a border around the windows and print a title */
     print_title(disp->menu_windows[INDEX_REG], 1, "Registers",
                 (disp->active_window == INDEX_REG) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(disp->menu_windows[INDEX_REG], 2, 0, ACS_LTEE);
     mvwhline(disp->menu_windows[INDEX_REG], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[REG], 2, REG_PANEL_WIDTH - 1, ACS_RTEE);
-        box(reg_menu_win, 0, 0); */
 
     print_title(disp->menu_windows[INDEX_MEM], 1, "Memory",
                 (disp->active_window == INDEX_MEM) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(disp->menu_windows[INDEX_MEM], 2, 0, ACS_LTEE);
     mvwhline(disp->menu_windows[INDEX_MEM], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[MEM], 2, MEM_PANEL_WIDTH - 1, ACS_RTEE);
-        box(mem_menu_win, 0, 0); */
 
     print_title(disp->menu_windows[CPU], 1, "CPU Registers",
                 (disp->active_window == CPU) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(disp->menu_windows[CPU], 2, 0, ACS_LTEE);
     mvwhline(disp->menu_windows[CPU], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[CPU], 2, CPU_PANEL_WIDTH - 1, ACS_RTEE);
-        box(cpu_menu_win, 0, 0); */
 
     /* Refresh the menus */
     int i;
@@ -625,8 +646,11 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
                 word_input = get_word_from_string(word_input_raw);
                 disp->breakpoints[get_index_from_address(word_input)] =
                     !disp->breakpoints[get_index_from_address(word_input)];
-                /** Reuse the existing char array. It's just big enough for the string "unset\0". */
-                sprintf(word_input_raw, disp->breakpoints[get_index_from_address(word_input)] ? "set" : "unset");
+                /** Reuse the existing char array. It's just big enough for the string
+                 * "unset\0". */
+                sprintf(word_input_raw, disp->breakpoints[get_index_from_address(word_input)]
+                                            ? "set"
+                                            : "unset");
                 print_message(MSG_SET_UNSET_BRKPT_CONFIRM, word_input_raw);
                 save_menu_indicies(disp);
                 display_update(disp, lc3_snapshot);

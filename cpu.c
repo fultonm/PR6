@@ -117,7 +117,7 @@ void initialize_cpu(cpu_p cpu) {
     }
     cpu->cc = 0;
     cpu->ir = 0;
-    cpu->pc = 0;
+    cpu->pc = MEMORY_ADDRESS_MIN;
     cpu->mar = 0;
     cpu->mdr = 0;
 }

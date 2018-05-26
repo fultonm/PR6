@@ -12,9 +12,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "slc3.h"
 #include "display.h"
 #include "lc3.h"
+#include "slc3.h"
 
 /** The main instruction cycle control flow */
 void controller(lc3_p, display_p);
@@ -38,19 +38,37 @@ int main(int argc, char *argv[]) {
     /** Create and initialze the LC3 object */
     lc3_p lc3 = lc3_create();
 
+    /** The char array used to store the hex file's name */
+    char input_file_name[80];
+    /** The pointer to the file on disk */
+    FILE *file_ptr;
+
+    /*
+     * If there is an argument, attempt to use it first as the file name.
+     * Example file name: "/hex/HW3.hex"
+     */
+    if (argc > 1) {
+        if (argc > 2) {
+            printf("Too many arguments supplied. The first argument will be treated as a file "
+                   "name.\n");
+        }
+        file_ptr = open_file(argv[1]);
+        while (file_ptr == NULL) {
+            printf("File not found. Enter a file name: ");
+            scanf("%s", input_file_name);
+            file_ptr = open_file(input_file_name);
+        }
+        load_file_to_memory(lc3, open_file(input_file_name));
+    }
+
+
     /** Create and initialize the Display object */
     display_p disp = display_create();
 
-    // If there is an argument, attempt to used the first as a file name.
-    // char *fileName = "./hex/HW3.hex";
-    if (argc > 1) {
-        load_file_to_memory(lc3, open_file(argv[1]));
-    }
-
-    /** Create a snapshot of LC3's components' current parameters and pass this struct by value
-     * into the Display component for displaying. This ensures the display only receieves a
-     * copy of all values in the LC3 and makes it impossible for Display to modify the LC3
-     * without calling the appropriate methods. */
+    /** Create a snapshot of LC3's components' current parameters and pass this struct by
+     * value into the Display component for displaying. This ensures the display only
+     * receieves a copy of all values in the LC3 and makes it impossible for Display to
+     * modify the LC3 without calling the appropriate methods. */
     const lc3_snapshot_t machine_snapshot = lc3_get_snapshot(lc3);
     display_update(disp, machine_snapshot);
     display_result_t result = display_loop(disp, machine_snapshot);
@@ -59,11 +77,15 @@ int main(int argc, char *argv[]) {
      * LC-3 */
     while (result != DISPLAY_QUIT) {
         switch (result) {
-
         case DISPLAY_LOAD:
-            //load_file_to_memory(lc3, open_file(fileName));
+            display_get_file_name(input_file_name);
+            file_ptr = open_file(input_file_name);
+            while (file_ptr == NULL) {
+                display_get_file_error(input_file_name);
+                file_ptr = open_file(input_file_name);
+            }
+            load_file_to_memory(lc3, open_file(input_file_name));
             break;
-
         case DISPLAY_STEP:
             if (lc3_is_halted(lc3) == FALSE) {
                 controller(lc3, disp);
@@ -72,9 +94,12 @@ int main(int argc, char *argv[]) {
         case DISPLAY_RUN:
             if (lc3_is_halted(lc3) == FALSE) {
                 do {
+                    /** Run through the controller for this instruction */
                     controller(lc3, disp);
+                    /** Update the display with new information (but don't wait for a keystroke) */
                     display_update(disp, lc3_get_snapshot(lc3));
-                    usleep(10000);
+                    /** Sleep for 5 milliseconds */
+                    usleep(5000);
                 } while (lc3_is_halted(lc3) == FALSE &&
                          display_has_breakpoint(disp, lc3_get_pc(lc3)) == FALSE);
             }
@@ -93,8 +118,8 @@ int main(int argc, char *argv[]) {
  * The controller method of the LC-3. This contains much of the complete
  * instruction cycle of the LC-3 */
 void controller(lc3_p lc3, display_p disp) {
-    /** This is set to true at the end of the STORE phase and allows execution control to be
-     * passed back to the main loop */
+    /** This is set to true at the end of the STORE phase and allows execution control to
+     * be passed back to the main loop */
     bool_t is_cycle_complete = FALSE;
 
     /** Ensuring that CPU pointer being passed into the controller is valid. */
@@ -299,6 +324,8 @@ void trap(display_p disp, lc3_p lc3, word_t vector) {
     }
 }
 
+
+
 /*
  * This function will allow the opening of files
  */
@@ -326,7 +353,7 @@ void load_file_to_memory(lc3_p lc3, FILE *file) {
         lc3_set_memory(lc3, lc3_get_starting_address(lc3) + i, data);
         i += 1;
     }
-    
+
     if (lc3_has_file_loaded(lc3) == FALSE) {
         lc3_toggle_file_loaded(lc3);
     }

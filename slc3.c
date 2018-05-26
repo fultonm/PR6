@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "slc3.h"
 #include "display.h"
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
      * into the Display component for displaying. This ensures the display only receieves a
      * copy of all values in the LC3 and makes it impossible for Display to modify the LC3
      * without calling the appropriate methods. */
-    lc3_snapshot_t machine_snapshot = lc3_get_snapshot(lc3);
+    const lc3_snapshot_t machine_snapshot = lc3_get_snapshot(lc3);
     display_update(disp, machine_snapshot);
     display_result_t result = display_loop(disp, machine_snapshot);
 
@@ -72,6 +73,8 @@ int main(int argc, char *argv[]) {
             if (lc3_is_halted(lc3) == FALSE) {
                 do {
                     controller(lc3, disp);
+                    display_update(disp, lc3_get_snapshot(lc3));
+                    usleep(10000);
                 } while (lc3_is_halted(lc3) == FALSE &&
                          display_has_breakpoint(disp, lc3_get_pc(lc3)) == FALSE);
             }
@@ -158,16 +161,11 @@ void controller(lc3_p lc3, display_p disp) {
         /* The fourth state of the instruction cycle, the "fetch operands" state. */
         case STATE_FETCH_OP:
             switch (lc3_get_opcode(lc3)) {
-            // get operands out of registers into A, B of ALU
-            // or get memory for load instr.
             case OPCODE_ADD:
                 lc3_fetch_op_add(lc3);
-
                 break;
             case OPCODE_AND:
                 lc3_fetch_op_and(lc3);
-                // The book page 106 says current microprocessors can be done
-                // simultaneously during fetch, but this simulator is old skool.
                 break;
             case OPCODE_NOT:
                 lc3_fetch_op_not(lc3);
@@ -230,8 +228,8 @@ void controller(lc3_p lc3, display_p disp) {
             case OPCODE_AND:
                 lc3_store_and(lc3);
                 break;
-            case OPCODE_NOT:
-                lc3_store_not(lc3);
+            case OPCODE_JMP:
+                lc3_store_jmp(lc3);
                 break;
             case OPCODE_JSR:
                 lc3_store_jsr(lc3);
@@ -244,6 +242,9 @@ void controller(lc3_p lc3, display_p disp) {
                 break;
             case OPCODE_LDR:
                 lc3_store_ldr(lc3);
+                break;
+            case OPCODE_NOT:
+                lc3_store_not(lc3);
                 break;
             case OPCODE_ST:
                 lc3_store_st(lc3);

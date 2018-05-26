@@ -50,6 +50,8 @@ static const char MSG_EDIT_MEM_PPT_DATA[] = "6) Enter the hex data to push to %s
 static const char MSG_EDIT_MEM_NO_FILE[] = "6) No file loaded yet!";
 static const char MSG_SET_UNSET_BRKPT[] =
     "8) Enter the hex address to set/unset breakpoint >> ";
+static const char MSG_SET_UNSET_BRKPT_CONFIRM[] = "8) Breakpoint was %s";
+static const char MSG_BRKPT_HIT[] = "4) Breakpoint hit at %s. Step or run to continue >> ";
 static const char MSG_SET_UNSET_BRKPT_NO_FILE[] = "8) No file loaded yet!";
 static const char MSG_CPU_HALTED_STEP[] = "3) Cannot step: CPU halted";
 static const char MSG_CPU_HALTED_RUN[] = "4) Cannot run: CPU halted";
@@ -439,7 +441,7 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
         set_menu_win(disp->menus[i], disp->menu_windows[i]);
     }
 
-    /* The the menu sub ??? and its format menu_format is number of rows, columns
+    /* The the menu sub ??? and its foprint_messrmat menu_format is number of rows, columns
      * for the list's visible contents and scrolls the rest of the list. */
     set_menu_sub(disp->menus[INDEX_REG],
                  derwin(disp->menu_windows[INDEX_REG], REG_PANEL_HEIGHT - 4,
@@ -502,6 +504,13 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
 
     if (lc3_snapshot.is_halted) {
         print_message(MSG_CPU_HALTED, NULL);
+    }
+    int index = get_index_from_address(lc3_snapshot.cpu_snapshot.pc);
+    bool_t brkptq = disp->breakpoints[index];
+    if (brkptq == TRUE) {
+        /** We can reuse an existing char array to store this string */
+        sprintf(word_input_raw, "x%04X", lc3_snapshot.cpu_snapshot.pc);
+        print_message(MSG_BRKPT_HIT, word_input_raw);
     }
 
     int c;
@@ -616,6 +625,9 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
                 word_input = get_word_from_string(word_input_raw);
                 disp->breakpoints[get_index_from_address(word_input)] =
                     !disp->breakpoints[get_index_from_address(word_input)];
+                /** Reuse the existing char array. It's just big enough for the string "unset\0". */
+                sprintf(word_input_raw, disp->breakpoints[get_index_from_address(word_input)] ? "set" : "unset");
+                print_message(MSG_SET_UNSET_BRKPT_CONFIRM, word_input_raw);
                 save_menu_indicies(disp);
                 display_update(disp, lc3_snapshot);
                 restore_menu_indicies(disp);

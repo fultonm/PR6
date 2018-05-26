@@ -213,7 +213,7 @@ void lc3_eval_addr_br(lc3_p lc3) {
     bool_t nzp_n = get_nzp_n(nzp);
     bool_t nzp_z = get_nzp_z(nzp);
     bool_t nzp_p = get_nzp_p(nzp);
-    lc3->branch_enabled = (nzp_n & cc_n) | (nzp_z & cc_z) | (nzp_n & cc_n);
+    lc3->branch_enabled = (nzp_n & cc_n) | (nzp_z & cc_z) | (nzp_p & cc_p);
 
     if (lc3->branch_enabled) {
         /** Microstate 22 */

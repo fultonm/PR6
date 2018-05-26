@@ -34,7 +34,7 @@ void memory_reset(memory_p memory) { initialize_memory(memory); }
 void memory_destroy(memory_p memory) { free(memory); }
 
 /** Takes a snapshot of the memory for debugging or display purposes */
-memory_snapshot_t memory_get_snapshot(memory_p memory) {
+const memory_snapshot_t memory_get_snapshot(memory_p memory) {
     memory_snapshot_t snapshot;
     memcpy(snapshot.data, memory->data, sizeof(word_t) * MEMORY_SIZE);
     return snapshot;

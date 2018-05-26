@@ -18,7 +18,7 @@ void alu_initialize(alu_p alu);
 void alu_destroy(alu_p alu);
 
 /** Takes a snapshot of the ALU data for debugging or display purposes */
-alu_snapshot_t alu_get_snapshot(alu_p);
+const alu_snapshot_t alu_get_snapshot(alu_p);
 
 /** Load ALU source register 1 */
 void alu_load_sr1(alu_p, word_t data);

@@ -38,7 +38,7 @@ void cpu_reset(cpu_p cpu) { initialize_cpu(cpu); }
 void cpu_destroy(cpu_p cpu) { free(cpu); }
 
 /** Takes a snapshot of the CPU data for debugging or display purposes */
-cpu_snapshot_t cpu_get_snapshot(cpu_p cpu) {
+const cpu_snapshot_t cpu_get_snapshot(cpu_p cpu) {
     cpu_snapshot_t snapshot;
     snapshot.cc_n = cpu_get_cc_n(cpu);
     snapshot.cc_z = cpu_get_cc_z(cpu);

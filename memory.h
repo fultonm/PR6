@@ -17,7 +17,7 @@ void memory_reset(memory_p);
 void memory_destroy(memory_p);
 
 /** Takes a snapshot of the memory for debugging or display purposes */
-memory_snapshot_t memory_get_snapshot(memory_p);
+const memory_snapshot_t memory_get_snapshot(memory_p);
 
 /** Writes to the specified memory address */
 void memory_write(memory_p, word_t address, word_t data);

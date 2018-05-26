@@ -36,7 +36,7 @@
 #define BIT_PCOFFSET6 32    // 0000 0000 0010 0000
 
 // How many times to shift the bits.
-#define BITSHIFT_OPCODE 11
+#define BITSHIFT_OPCODE 12
 #define BITSHIFT_DR 9
 #define BITSHIFT_NZP 9
 #define BITSHIFT_SR1 6
@@ -150,6 +150,7 @@ void lc3_fetch_op_ldr(lc3_p);
 void lc3_store_ldr(lc3_p);
 
 /** LEA */
+void lc3_eval_addr_lea(lc3_p lc3);
 void lc3_store_lea(lc3_p);
 
 /** NOT */

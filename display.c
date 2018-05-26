@@ -70,7 +70,7 @@ typedef struct display_t {
     int saved_menu_index[3];
     int active_window;
     int c, i;
-    char output_console[36];
+    char output_console[72];
     unsigned char output_console_ptr;
 
     bool breakpoints[MEMORY_SIZE];

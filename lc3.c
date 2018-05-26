@@ -166,8 +166,8 @@ void lc3_execute_add(lc3_p lc3) {
 void lc3_store_add(lc3_p lc3) {
     /** Microstate 1 */
     reg_addr_t dr = get_dr(lc3);
-    word_t mdr = cpu_get_mdr(lc3->cpu);
-    cpu_set_register(lc3->cpu, dr, mdr);
+    word_t result = alu_fetch_result(lc3->alu);
+    cpu_set_register(lc3->cpu, dr, result);
 }
 
 /** AND fetch operands */
@@ -199,8 +199,8 @@ void lc3_execute_and(lc3_p lc3) {
 void lc3_store_and(lc3_p lc3) {
     /** Microstate 5 */
     reg_addr_t dr = get_dr(lc3);
-    word_t mdr = cpu_get_mdr(lc3->cpu);
-    cpu_set_register(lc3->cpu, dr, mdr);
+    word_t result = alu_fetch_result(lc3->alu);
+    cpu_set_register(lc3->cpu, dr, result);
 }
 
 /** BR evaluate address */
@@ -360,6 +360,14 @@ void lc3_store_ldr(lc3_p lc3) {
     cpu_set_register(lc3->cpu, dr, mdr);
 }
 
+/** LEA evaluate address */
+void lc3_eval_addr_lea(lc3_p lc3) {
+    /** Microstate 14 */
+    pc_offset_9_t offset = get_pc_offset_9(lc3);
+    word_t pc = cpu_get_pc(lc3->cpu);
+    lc3->eval_addr_calculation = pc + offset;
+}
+
 /** LEA store */
 void lc3_store_lea(lc3_p lc3) {
     /** Microstate 14 */
@@ -385,8 +393,8 @@ void lc3_execute_not(lc3_p lc3) {
 void lc3_store_not(lc3_p lc3) {
     /** Microstate 9 */
     reg_addr_t dr = get_dr(lc3);
-    word_t mdr = cpu_get_mdr(lc3->cpu);
-    cpu_set_register(lc3->cpu, dr, mdr);
+    word_t result = alu_fetch_result(lc3->alu);
+    cpu_set_register(lc3->cpu, dr, result);
 }
 
 /** ST evaluate address */
@@ -403,7 +411,7 @@ void lc3_fetch_op_st(lc3_p lc3) {
     cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
 
     /** Microstate 23 */
-    reg_addr_t sr = get_sr1(lc3);
+    reg_addr_t sr = get_dr(lc3); /* Actually "Source Register" */
     word_t sr_data = cpu_get_register(lc3->cpu, sr);
     cpu_set_mdr(lc3->cpu, sr_data);
 }
@@ -439,7 +447,7 @@ void lc3_fetch_op_sti(lc3_p lc3) {
     cpu_set_mar(lc3->cpu, mdr);
 
     /** Microstate 23 */
-    reg_addr_t sr = get_sr1(lc3);
+    reg_addr_t sr = get_dr(lc3); /* Actually "Source Register" */
     word_t sr_data = cpu_get_register(lc3->cpu, sr);
     cpu_set_mdr(lc3->cpu, sr_data);
 }
@@ -467,7 +475,7 @@ void lc3_fetch_op_str(lc3_p lc3) {
     cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
 
     /** Microstate 23 */
-    reg_addr_t sr = get_sr1(lc3);
+    reg_addr_t sr = get_dr(lc3); /* Actually "Source Register" */
     word_t sr_data = cpu_get_register(lc3->cpu, sr);
     cpu_set_mdr(lc3->cpu, sr_data);
 }

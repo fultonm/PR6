@@ -130,6 +130,9 @@ void controller(lc3_p lc3, display_p disp) {
             case OPCODE_LDR:
                 lc3_eval_addr_ldr(lc3);
                 break;
+            case OPCODE_LEA:
+                lc3_eval_addr_lea(lc3);
+                break;
             case OPCODE_ST:
                 lc3_eval_addr_st(lc3);
                 break;
@@ -229,6 +232,9 @@ void controller(lc3_p lc3, display_p disp) {
                 break;
             case OPCODE_NOT:
                 lc3_store_not(lc3);
+                break;
+            case OPCODE_JSR:
+                lc3_store_jsr(lc3);
                 break;
             case OPCODE_LD:
                 lc3_store_ld(lc3);

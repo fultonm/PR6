@@ -1,5 +1,7 @@
-/* LC-3 Emulator
- *
+/* LC-3 Simulator Simulator
+
+ * Contributors: Mike Fulton, Logan Stafford, Enoch Chan
+ * TCSS372 - Computer Architecture - Spring 2018
  * Date: May 2018
  *
  * This a terminal-based program that emulates the low-level functions of the
@@ -9,7 +11,7 @@
 
 #include "display.h"
 #include "global.h"
-#include "lc3.h"
+#include "slc3.h"
 #include <curses.h>
 #include <menu.h>
 #include <signal.h>
@@ -32,21 +34,27 @@
 #define IO_PANEL_HEIGHT 5
 #define HEIGHT_PADDING 2
 
+#define OUTPUT_CONSOLE_LINES 3
+#define OUTPUT_CONSOLE_COLS 64
+
 #define CPU_ELEMENTS_COUNT 10
 
 static const char MSG_CPU_HALTED[] = "CPU halted :*)";
 static const char MSG_LOAD[] = "1) Enter a program to load >> ";
 static const char MSG_LOADED[] = "1) Loaded %s";
+static const char MSG_FILE_NOT_LOADED[] = "1) File not found. Enter a new filename >> ";
 static const char MSG_STEP[] = "3) Stepped";
 static const char MSG_STEP_NO_FILE[] = "3) No file loaded yet!";
 static const char MSG_RUNNING_CODE[] = "4) Running code";
 static const char MSG_RUN_NO_FILE[] = "4) No file loaded yet!";
 static const char MSG_DISPLAY_MEM[] = "5) Enter the hex address to jump to >> ";
-static const char MSG_EDIT_MEM_PPT_ADDR[] = "6) Enter the hex address to edit >> ";
-static const char MSG_EDIT_MEM_PPT_DATA[] = "6) Enter the hex data to push to %s >> ";
+static const char MSG_EDIT_MEM_ADDR[] = "6) Enter the hex address to edit >> ";
+static const char MSG_EDIT_MEM_DATA[] = "6) Enter the hex data to push to %s >> ";
 static const char MSG_EDIT_MEM_NO_FILE[] = "6) No file loaded yet!";
 static const char MSG_SET_UNSET_BRKPT[] =
     "8) Enter the hex address to set/unset breakpoint >> ";
+static const char MSG_SET_UNSET_BRKPT_CONFIRM[] = "8) Breakpoint was %s";
+static const char MSG_BRKPT_HIT[] = "4) Breakpoint hit at %s. Step or run to continue >> ";
 static const char MSG_SET_UNSET_BRKPT_NO_FILE[] = "8) No file loaded yet!";
 static const char MSG_CPU_HALTED_STEP[] = "3) Cannot step: CPU halted";
 static const char MSG_CPU_HALTED_RUN[] = "4) Cannot run: CPU halted";
@@ -70,8 +78,9 @@ typedef struct display_t {
     int saved_menu_index[3];
     int active_window;
     int c, i;
-    char output_console[36];
-    unsigned char output_console_ptr;
+    char console_content[OUTPUT_CONSOLE_LINES][OUTPUT_CONSOLE_COLS];
+    unsigned char console_line_ptr;
+    unsigned char console_col_ptr;
 
     bool breakpoints[MEMORY_SIZE];
 } display_t, *display_p;
@@ -84,13 +93,8 @@ void clear_line(int line);
 void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
 void print_window_titles();
-word_t get_word_from_string(char *);
 
-/** Ensure these are at least as big (or equal to) the actual vaues in the CPU.
- * These have +1 because in addition to the actual string representing data in
- * the LC-3, a null
- * value must also be present to signify the end of the array. */
-
+/** Allocates and initializes the Display */
 display_p display_create() {
     display_p disp = calloc(1, sizeof(display_t));
     initialize_display(disp);
@@ -125,16 +129,19 @@ int initialize_display(display_p disp) {
     keypad(stdscr, TRUE);
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_CYAN, COLOR_BLACK);
+    init_pair(3, COLOR_YELLOW, COLOR_BLACK);
 
     /* Stores the size of each array */
     disp->item_counts[INDEX_REG] = REGISTER_SIZE;
     disp->item_counts[INDEX_MEM] = MEMORY_SIZE;
-    char display_mem_input[6];
     disp->item_counts[CPU] = CPU_ELEMENTS_COUNT;
 
     disp->saved_menu_index[INDEX_REG] = 0;
     disp->saved_menu_index[INDEX_MEM] = 0;
     disp->saved_menu_index[CPU] = 0;
+
+    disp->console_line_ptr = 0;
+    disp->console_col_ptr = 0;
 
     disp->menu_list_items[INDEX_REG] =
         (ITEM **)calloc(disp->item_counts[INDEX_REG] + 1, sizeof(ITEM *));
@@ -157,9 +164,15 @@ int initialize_display(display_p disp) {
     disp->input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
                                 MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(disp->input_window, "Input");
-    disp->output_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
+    disp->output_window = newwin(IO_PANEL_HEIGHT + OUTPUT_CONSOLE_LINES - 1,
+                                 MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
                                  MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
     draw_io_window(disp->output_window, "Output");
+
+    for (i = 0; i < OUTPUT_CONSOLE_LINES; i++) {
+        memset(disp->console_content[i], '\0', OUTPUT_CONSOLE_COLS);
+    }
+
     return 0;
 }
 
@@ -201,29 +214,59 @@ void print_message(const char *message, char *arg) {
 /** Clears the message displayed just below the list of available user
  * operations */
 void clear_line(int line) {
-    move(line, 0);
+    move(line, 1);
     clrtoeol();
 }
 
 /** Prints output resulting from the LC-3 */
 void display_print_output(display_p disp, char ch) {
-    if (ch != '\n') {
-        disp->output_console[disp->output_console_ptr] = ch;
-        disp->output_console[++(disp->output_console_ptr)] = '\0';
-        /** Position the message */
-        attron(COLOR_PAIR(2));
+    /* Clear the whole output window */
+    wclrtobot(disp->output_window);
+    int i;
+    /* If the character is a new-line, we'll shift all the lines up and clear
+    the last line */
+    if (ch == '\n') {
+        if (disp->console_line_ptr == OUTPUT_CONSOLE_LINES - 1) {
 
-        mvprintw(MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT * 2 + HEIGHT_PADDING, 6, "%s",
-                 disp->output_console);
-        attroff(COLOR_PAIR(2));
+            for (i = 0; i < OUTPUT_CONSOLE_LINES - 1; i++) {
+                strcpy(disp->console_content[i], disp->console_content[i + 1]);
+            }
+        }
+        /* Unless we have less than 3 lines written so far */
+        else {
+            disp->console_line_ptr++;
+        }
+        disp->console_col_ptr = 0;
+        memset(disp->console_content[disp->console_line_ptr], '\0', OUTPUT_CONSOLE_COLS);
     } else {
-        disp->output_console_ptr = 0;
-        disp->output_console[disp->output_console_ptr] = '\0';
-        clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-        draw_io_window(disp->output_window, "Output");
+        /* Write the character to the correct position.. duh.. */
+        disp->console_content[disp->console_line_ptr][disp->console_col_ptr] = ch;
+        if (disp->console_col_ptr < OUTPUT_CONSOLE_COLS - 1) {
+            /* Increment the current column */
+            disp->console_col_ptr++;
+        }
     }
+    /* If the character is a null-terminator we actually want to decrement the
+    pointer. This is because the next character written might want to be on the
+    same line (i.e. collecting user input on the same line after a prompt.) The
+    user input will overwrite the null-terminator, [[TODO: Then there will be no null
+    terminator after a PUTC???]] */
+    if (ch == '\0') {
+        disp->console_col_ptr--;
+    }
+
+    /** Position the message */
+    for (i = 0; i < OUTPUT_CONSOLE_LINES; i++) {
+        wattron(disp->output_window, COLOR_PAIR(3));
+        mvwprintw(disp->output_window, 2 + i, 2, "%s", disp->console_content[i]);
+        wattroff(disp->output_window, COLOR_PAIR(3));
+    }
+
+    draw_io_window(disp->output_window, "Output");
+    refresh();
 }
 
+/** Get input from the console */
 char display_get_input(display_p disp) {
     int prev_active_window = disp->active_window;
 
@@ -246,28 +289,71 @@ char display_get_input(display_p disp) {
     return input_ch;
 }
 
+/** Prompt for a file name */
+void display_get_file_name(char *input_file_name, int size) {
+    print_message(MSG_LOAD, NULL);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing file name input */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
+    echo();
+    getnstr(input_file_name, size);
+    noecho();
+}
+
+/** Reprompt for a file name since the last one was an error */
+void display_get_file_error(char *input_file_name, int size) {
+    print_message(MSG_FILE_NOT_LOADED, NULL);
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_FILE_NOT_LOADED) + 4);
+    echo();
+    getnstr(input_file_name, size);
+    noecho();
+}
+
+/** Let the user know their file input was accepted */
+void display_get_file_success(char *input_file_name) {
+    print_message(MSG_LOADED, input_file_name);
+}
+
+/** Prompts for the address of the memory we will edit */
+void display_edit_mem_get_address(char *input) {
+    /** Prompt the user for the address */
+    print_message(MSG_EDIT_MEM_ADDR, NULL);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing address */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_ADDR) + 4);
+    echo();
+    getstr(input);
+    noecho();
+}
+
+/** Prompts for the data the memory location will be set to. */
+void display_edit_mem_get_data(char *input, char *address) {
+    /** Prompt the user for the data */
+    print_message(MSG_EDIT_MEM_DATA, address);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing address */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_DATA) + strlen(address) + 2);
+    echo();
+    getstr(input);
+    noecho();
+}
+
 void print_window_titles(display_p disp) {
     /** Print a border around the windows and print a title */
     print_title(disp->menu_windows[INDEX_REG], 1, "Registers",
                 (disp->active_window == INDEX_REG) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(disp->menu_windows[INDEX_REG], 2, 0, ACS_LTEE);
     mvwhline(disp->menu_windows[INDEX_REG], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[REG], 2, REG_PANEL_WIDTH - 1, ACS_RTEE);
-        box(reg_menu_win, 0, 0); */
 
     print_title(disp->menu_windows[INDEX_MEM], 1, "Memory",
                 (disp->active_window == INDEX_MEM) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(disp->menu_windows[INDEX_MEM], 2, 0, ACS_LTEE);
     mvwhline(disp->menu_windows[INDEX_MEM], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[MEM], 2, MEM_PANEL_WIDTH - 1, ACS_RTEE);
-        box(mem_menu_win, 0, 0); */
 
     print_title(disp->menu_windows[CPU], 1, "CPU Registers",
                 (disp->active_window == CPU) ? COLOR_PAIR(2) : COLOR_PAIR(1));
     mvwaddch(disp->menu_windows[CPU], 2, 0, ACS_LTEE);
     mvwhline(disp->menu_windows[CPU], 2, 1, ACS_HLINE, 38);
-    /** mvwaddch(menu_windows[CPU], 2, CPU_PANEL_WIDTH - 1, ACS_RTEE);
-        box(cpu_menu_win, 0, 0); */
 
     /* Refresh the menus */
     int i;
@@ -280,8 +366,6 @@ void print_window_titles(display_p disp) {
 
 /** Prints the title of a window */
 void print_title(WINDOW *win, int y, char *string, chtype color) {
-    if (win == NULL)
-        win = stdscr;
     wattron(win, color);
     mvwprintw(win, y, 4, "%s", string);
     wattroff(win, color);
@@ -330,7 +414,8 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     int i;
     for (i = 0; i < disp->item_counts[INDEX_REG]; ++i) {
         sprintf(disp->reg_strings[i].label, "R%d:", i);
-        sprintf(disp->reg_strings[i].description, "x%04X", lc3_snapshot.cpu_snapshot.registers[i]);
+        sprintf(disp->reg_strings[i].description, "x%04X",
+                lc3_snapshot.cpu_snapshot.registers[i]);
         disp->menu_list_items[INDEX_REG][i] =
             new_item(disp->reg_strings[i].label, disp->reg_strings[i].description);
     }
@@ -398,7 +483,7 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
         set_menu_win(disp->menus[i], disp->menu_windows[i]);
     }
 
-    /* The the menu sub ??? and its format menu_format is number of rows, columns
+    /* The the menu sub ??? and its foprint_messrmat menu_format is number of rows, columns
      * for the list's visible contents and scrolls the rest of the list. */
     set_menu_sub(disp->menus[INDEX_REG],
                  derwin(disp->menu_windows[INDEX_REG], REG_PANEL_HEIGHT - 4,
@@ -444,17 +529,12 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
 display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     /* Set selected item in memory to be current PC */
     size_t pc_index = get_index_from_address(lc3_snapshot.cpu_snapshot.pc);
-    set_current_item(disp->menus[INDEX_MEM],
-                     disp->menu_list_items[INDEX_MEM][pc_index]);
+    set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][pc_index]);
     display_update(disp, lc3_snapshot);
 
     /* Input vars used for 5) Show Mem, 6)Edit Mem, 8) Set/Unset breakpoint */
     char word_input_raw[6];
     word_t word_input;
-    /* Secondary input vars used for 6) Edit Mem to specify the data to insert at the address
-     */
-    char word_data_input_raw[6];
-    word_t word_data_input;
 
     /** This variable is used to return information about the user's selection
      * back to the LC-3. We load it with whether the current PC is a breakpoint. */
@@ -462,6 +542,13 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
 
     if (lc3_snapshot.is_halted) {
         print_message(MSG_CPU_HALTED, NULL);
+    }
+    int index = get_index_from_address(lc3_snapshot.cpu_snapshot.pc);
+    bool_t brkptq = disp->breakpoints[index];
+    if (brkptq == TRUE) {
+        /** We can reuse an existing char array to store this string */
+        sprintf(word_input_raw, "x%04X", lc3_snapshot.cpu_snapshot.pc);
+        print_message(MSG_BRKPT_HIT, word_input_raw);
     }
 
     int c;
@@ -479,16 +566,6 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
             continue;
         case 49:
             /* User selected 1) to load a file */
-            print_message(MSG_LOAD, NULL);
-            /** Move the cursor, turn on echo mode so the user can see their input
-             *  then turn it back on after capturing file name input */
-            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_LOAD) + 4);
-            echo();
-            getstr(load_file_input);
-            noecho();
-
-            clear_line(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1);
-            print_message(MSG_LOADED, load_file_input);
             display_return = DISPLAY_LOAD;
             break;
         case 51:
@@ -531,35 +608,14 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
                 disp->menus[INDEX_MEM],
                 disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
             continue;
-            break;
         case 54:
             if (lc3_snapshot.file_loaded == FALSE) {
                 print_message(MSG_EDIT_MEM_NO_FILE, NULL);
                 continue;
             }
             /* User selected 6) to edit a memory location */
-            print_message(MSG_EDIT_MEM_PPT_ADDR, NULL);
-            /** Move the cursor, turn on echo mode so the user can see their input
-             *  then turn it back on after capturing address */
-            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_PPT_ADDR) + 4);
-            echo();
-            getstr(word_input_raw);
-            noecho();
-            word_input = get_word_from_string(word_input_raw);
-            print_message(MSG_EDIT_MEM_PPT_DATA, word_input_raw);
-            /** Move the cursor, turn on echo mode so the user can see their input
-             *  then turn it back on after capturing the data */
-            move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
-                 strlen(MSG_EDIT_MEM_PPT_DATA) + strlen(word_input_raw) + 4);
-            echo();
-            getstr(word_data_input_raw);
-            noecho();
-            word_data_input = get_word_from_string(word_data_input_raw);
-            /** TODO: This will not be the correct thing to do here. We need a method in slc3
-             * and ultimately lc3 to set memory. */
-            /*lc3_snapshot.memory_snapsshot.data[mem_addr_index] = mem_data;*/
-            display_update(disp, lc3_snapshot);
-            continue;
+            display_return = DISPLAY_EDIT_MEM;
+            break;
         case 56:
             /* User selected 8) to set/unset a breakpoint */
             if (lc3_snapshot.file_loaded == FALSE) {
@@ -576,6 +632,12 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
                 word_input = get_word_from_string(word_input_raw);
                 disp->breakpoints[get_index_from_address(word_input)] =
                     !disp->breakpoints[get_index_from_address(word_input)];
+                /** Reuse the existing char array. It's just big enough for the string
+                 * "unset\0". */
+                sprintf(word_input_raw, disp->breakpoints[get_index_from_address(word_input)]
+                                            ? "set"
+                                            : "unset");
+                print_message(MSG_SET_UNSET_BRKPT_CONFIRM, word_input_raw);
                 save_menu_indicies(disp);
                 display_update(disp, lc3_snapshot);
                 restore_menu_indicies(disp);
@@ -616,13 +678,4 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
 
     /** The only way to break out of the while loop and reach this point is pressing 9 */
     return DISPLAY_QUIT;
-}
-
-/** Returns a 16 bit LC3 word parsed from the specified string */
-word_t get_word_from_string(char *mem_string) {
-    /* A little bit of edge case handling...
-     * x3002 + strlen("x3002") - 4 = 3002
-     * 3002 + strlen("3002") - 4 = 3002 */
-    unsigned short address = strtol(mem_string + strlen(mem_string) - 4, NULL, 16);
-    return (word_t)address;
 }

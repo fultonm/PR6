@@ -1,9 +1,9 @@
 
+#include "cpu.h"
+#include "global.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "global.h"
-#include "cpu.h"
 
 #define MASK_WORD_T_HIGH_ORDER 32768 /* 1000 0000 0000 0000 */
 #define BITSHIFT_HIGH_ORDER 15
@@ -38,7 +38,7 @@ void cpu_reset(cpu_p cpu) { initialize_cpu(cpu); }
 void cpu_destroy(cpu_p cpu) { free(cpu); }
 
 /** Takes a snapshot of the CPU data for debugging or display purposes */
-cpu_snapshot_t cpu_get_snapshot(cpu_p cpu) {
+const cpu_snapshot_t cpu_get_snapshot(cpu_p cpu) {
     cpu_snapshot_t snapshot;
     snapshot.cc_n = cpu_get_cc_n(cpu);
     snapshot.cc_z = cpu_get_cc_z(cpu);
@@ -91,9 +91,7 @@ void cpu_increment_pc(cpu_p cpu) { cpu->pc++; }
 void cpu_increment_pc_by_value(cpu_p cpu, word_t value) { cpu->pc += value; }
 
 /** Sets the PC to a new value */
-void cpu_set_pc(cpu_p cpu, word_t data) {
-    cpu->pc = data;
-}
+void cpu_set_pc(cpu_p cpu, word_t data) { cpu->pc = data; }
 
 /** Returns the current PC */
 word_t cpu_get_pc(cpu_p cpu) { return cpu->pc; }
@@ -117,7 +115,7 @@ void initialize_cpu(cpu_p cpu) {
     }
     cpu->cc = 0;
     cpu->ir = 0;
-    cpu->pc = 0;
+    cpu->pc = MEMORY_ADDRESS_MIN;
     cpu->mar = 0;
     cpu->mdr = 0;
 }

@@ -18,7 +18,7 @@ void alu_initialize(alu_p alu);
 void alu_destroy(alu_p alu);
 
 /** Takes a snapshot of the ALU data for debugging or display purposes */
-alu_snapshot_t alu_get_snapshot(alu_p);
+const alu_snapshot_t alu_get_snapshot(alu_p);
 
 /** Load ALU source register 1 */
 void alu_load_sr1(alu_p, word_t data);
@@ -27,7 +27,7 @@ void alu_load_sr1(alu_p, word_t data);
 void alu_load_sr2(alu_p, word_t data);
 
 /** Fetch the result from ALU */
-word_t alu_load_result(alu_p);
+word_t alu_fetch_result(alu_p);
 
 /** Execute ADD operation on loaded SR1 and SR2 values */
 void alu_add(alu_p);

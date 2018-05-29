@@ -11,8 +11,6 @@
 #define REGISTER_SIZE 8
 #define MEMORY_SIZE 512
 #define MEMORY_ADDRESS_MIN 0x3000
-#define STACK_MAX 0x3200
-#define STACK_BASE 0x320A
 
 /** Register address indicies */
 #define R0 0
@@ -24,7 +22,7 @@
 #define R6 6
 #define R7 7
 
-#define MASK_CC_Z 5 /* 010 */
+#define MASK_CC_Z 2 /* 010 */
 #define MASK_CC_P 1 /* 001 */
 
 #define BITSHIFT_CC_N 2
@@ -85,10 +83,14 @@ struct lc3_snapshot_t {
     memory_snapshot_t memory_snapshot;
 };
 
-/** Converts to a 16-bit LC3 memory address from a 0-based array index. Based on the LC3 minimum address */
+/** Converts to a 16-bit LC3 memory address from a 0-based array index. Based on the LC3
+ * minimum address */
 word_t get_address_from_index(int);
 
 /** Convert to a 0-based array index from a 16-bit LC3 memory address */
 int get_index_from_address(word_t);
+
+/** Returns a 16 bit LC3 word parsed from the specified string */
+word_t get_word_from_string(char *);
 
 #endif

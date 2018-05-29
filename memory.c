@@ -1,10 +1,9 @@
 
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "memory.h"
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /** The time (in milliseconds) the memory will take to read and write */
 #define MEM_WRITE_DELAY 50
@@ -34,7 +33,7 @@ void memory_reset(memory_p memory) { initialize_memory(memory); }
 void memory_destroy(memory_p memory) { free(memory); }
 
 /** Takes a snapshot of the memory for debugging or display purposes */
-memory_snapshot_t memory_get_snapshot(memory_p memory) {
+const memory_snapshot_t memory_get_snapshot(memory_p memory) {
     memory_snapshot_t snapshot;
     memcpy(snapshot.data, memory->data, sizeof(word_t) * MEMORY_SIZE);
     return snapshot;

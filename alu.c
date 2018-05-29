@@ -1,8 +1,8 @@
 
 
-#include <stdlib.h>
 #include "global.h"
 #include "slc3.h"
+#include <stdlib.h>
 
 typedef struct alu_t {
     word_t sr1;
@@ -27,7 +27,7 @@ void alu_reset(alu_p alu) { initialize_alu(alu); }
 void alu_destroy(alu_p alu) { free(alu); }
 
 /** Takes a snapshot of the ALU data for debugging or display purposes */
-alu_snapshot_t alu_get_snapshot(alu_p alu) {
+const alu_snapshot_t alu_get_snapshot(alu_p alu) {
     alu_snapshot_t snapshot;
     snapshot.a = alu->sr1;
     snapshot.b = alu->sr2;

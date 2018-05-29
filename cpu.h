@@ -15,7 +15,7 @@ void cpu_reset(cpu_p);
 void cpu_destroy(cpu_p);
 
 /** Takes a snapshot of the CPU data for debugging or display purposes */
-cpu_snapshot_t cpu_get_snapshot(cpu_p cpu);
+const cpu_snapshot_t cpu_get_snapshot(cpu_p cpu);
 
 /** Fetches the data at the specified regiser */
 word_t cpu_get_register(cpu_p, reg_addr_t reg);

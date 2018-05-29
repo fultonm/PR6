@@ -5,7 +5,6 @@ screens/
 obj/
 *.DS_Store
 a.out.dSYM/
-
 *.valgrindout
 *.bin
 *.lst

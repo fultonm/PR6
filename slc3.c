@@ -1,4 +1,7 @@
-/* LC-3 Emulator
+/* 
+ * LC-3 Simulator Simulator
+ * Contributors: Mike Fulton, Logan Stafford, Enoch Chan
+ * TCSS372 - Computer Architecture - Spring 2018
  *
  * Date: May 2018
  *

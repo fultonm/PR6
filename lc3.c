@@ -545,6 +545,59 @@ void lc3_trap_x25(lc3_p lc3) {
     }
 }
 
+void lc3_fetch_op_stack(lc3_p lc3) {
+    cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
+    if (get_imm_mode(lc3) == TRUE) {                        // push/ST
+        word_t tmpR6 = cpu_get_register(lc3->cpu, );        // Get R6
+        // check for overflow here (if fail, R5 = 0 and break; else R5 = 1)
+        if (tmpR6 <= STACK_MAX) {
+            word_t tmpR5 = cpu_get_register(lc3->cpu, );
+            tmpR5 = 0;
+            cpu_set_register(lc3->cpu, , tmpR5);
+            break;
+        }
+
+        reg_addr_t sr = get_sr1(lc3);
+        word_t sr_data = cpu_get_register(lc3->cpu, sr);
+        cpu_set_mdr(lc3->cpu, sr_data);                     // MDR now contains contents to be pushed
+        cpu_set_mar(lc3->cpu, tmpR6);                       // MAR <- R6
+        tmpR6--;
+        cpu_set_register(lc3->cpu, , tmpR6);                // R6--
+    } else {                                                // pop/LD
+        // check for underflow here (if fail, R5 = 0 and break; else R5 = 1)
+        word_t tmpR6 = cpu_get_register(lc3->cpu, );        // Get R6
+        if (tmpR6 >= STACK_BASE) {
+            word_t tmpR5 = cpu_get_register(lc3->cpu, );
+            tmpR5 = 0;
+            cpu_set_register(lc3->cpu, , tmpR5);
+            break;
+        }
+
+        cpu_set_mar(lc3->cpu, tmpR6);                       // MAR <- R6
+        word_t mar = cpu_get_mar(lc3->cpu);
+        word_t data = memory_get_data(lc3->memory, mar);
+        cpu_set_mdr(lc3->cpu, data);                        // MDR now contains contents to be popped
+        tmpR6++;
+        cpu_set_register(lc3->cpu, , tmpR6);                // R6++
+    }
+}
+
+void lc3_store_stack(lc3_p lc3) {
+    word_t tmpR5 = cpu_get_register(lc3->cpu, );
+    if (tmpR5 == 0) {
+        break;
+    }
+    if (get_imm_mode(lc3) == TRUE) {            // push/ST
+        word_t mdr = cpu_get_mdr(lc3->cpu);
+        word_t mar = cpu_get_mar(lc3->cpu);
+        memory_write(lc3->memory, mar, mdr);    // push complete
+    } else {                                    // pop/LD
+        reg_addr_t dr = get_dr(lc3);
+        word_t mdr = cpu_get_mdr(lc3->cpu);
+        cpu_set_register(lc3->cpu, dr, mdr);    // pop complete
+    }
+}
+
 /** Gets the starting address for the PC according to the first line in the loaded hex file */
 word_t lc3_get_starting_address(lc3_p lc3) { return lc3->starting_address; }
 

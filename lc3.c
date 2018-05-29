@@ -508,6 +508,8 @@ void lc3_fetch_op_stack(lc3_p lc3) {
         if (r6_data <= STACK_MAX) {
             cpu_set_register(lc3->cpu, R5, STACK_ERROR);
             return;
+        } else {
+            cpu_set_register(lc3->cpu, R5, STACK_SUCCESS);
         }
 
         reg_addr_t sr = get_sr1(lc3);
@@ -515,14 +517,16 @@ void lc3_fetch_op_stack(lc3_p lc3) {
         cpu_set_mdr(lc3->cpu, sr_data); /* MDR now contains contents to be pushed */
         cpu_set_mar(lc3->cpu, r6_data); /* MAR <- R6 */
         r6_data--;                      /* Decrement and store the stack pointer */
-        cpu_set_register(lc3->cpu, R6, r6_data); 
+        cpu_set_register(lc3->cpu, R6, r6_data);
 
     /** Pop/LD */
-    } else { 
+    } else {
         /** check for underflow here (if fail, R5 = 0 and break; else R5 = 1) */
         if (r6_data >= STACK_BASE) {
             cpu_set_register(lc3->cpu, R5, STACK_ERROR);
             return;
+        } else {
+            cpu_set_register(lc3->cpu, R5, STACK_SUCCESS);
         }
 
         cpu_set_mar(lc3->cpu, r6_data); /* MAR <- R6 */
@@ -530,7 +534,7 @@ void lc3_fetch_op_stack(lc3_p lc3) {
         word_t data = memory_get_data(lc3->memory, mar);
         cpu_set_mdr(lc3->cpu, data);    /* MDR now contains contents to be popped */
         r6_data++;                      /* Increment and store the stack pointer */
-        cpu_set_register(lc3->cpu, R6, r6_data); 
+        cpu_set_register(lc3->cpu, R6, r6_data);
     }
 }
 
@@ -542,7 +546,7 @@ void lc3_store_stack(lc3_p lc3) {
     }
 
     /** Push/ST */
-    if (get_imm_mode(lc3) == STACK_PUSH) { 
+    if (get_imm_mode(lc3) == STACK_PUSH) {
         word_t mdr = cpu_get_mdr(lc3->cpu);
         word_t mar = cpu_get_mar(lc3->cpu);
         memory_write(lc3->memory, mar, mdr); /* push complete */

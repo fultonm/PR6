@@ -2,6 +2,7 @@
 .vscode/
 screens/
 *.o
+obj/
 *.DS_Store
 a.out.dSYM/
 *.valgrindout

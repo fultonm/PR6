@@ -494,6 +494,67 @@ void lc3_fetch_op_trap(lc3_p lc3) {
     cpu_set_mar(lc3->cpu, zext(vector));
 }
 
+/** Stack fetch operands */
+void lc3_fetch_op_stack(lc3_p lc3) {
+    /** cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
+     * Currently the stack doesn't have an evaluate address calculation. */
+
+    /** R6 contains the stack pointer. This will be used for overflow/underflow checks */
+    word_t r6_data = cpu_get_register(lc3->cpu, R6);
+
+    /** Push/ST */
+    if (get_imm_mode(lc3) == STACK_PUSH) {
+        /** check for overflow here (if fail, R5 = 0 and break; else R5 = 1) */
+        if (r6_data <= STACK_MAX) {
+            cpu_set_register(lc3->cpu, R5, STACK_ERROR);
+            return;
+        }
+
+        reg_addr_t sr = get_sr1(lc3);
+        word_t sr_data = cpu_get_register(lc3->cpu, sr);
+        cpu_set_mdr(lc3->cpu, sr_data); /* MDR now contains contents to be pushed */
+        cpu_set_mar(lc3->cpu, r6_data); /* MAR <- R6 */
+        r6_data--;                      /* Decrement and store the stack pointer */
+        cpu_set_register(lc3->cpu, R6, r6_data); 
+
+    /** Pop/LD */
+    } else { 
+        /** check for underflow here (if fail, R5 = 0 and break; else R5 = 1) */
+        if (r6_data >= STACK_BASE) {
+            cpu_set_register(lc3->cpu, R5, STACK_ERROR);
+            return;
+        }
+
+        cpu_set_mar(lc3->cpu, r6_data); /* MAR <- R6 */
+        word_t mar = cpu_get_mar(lc3->cpu);
+        word_t data = memory_get_data(lc3->memory, mar);
+        cpu_set_mdr(lc3->cpu, data);    /* MDR now contains contents to be popped */
+        r6_data++;                      /* Increment and store the stack pointer */
+        cpu_set_register(lc3->cpu, R6, r6_data); 
+    }
+}
+
+/** Stack store */
+void lc3_store_stack(lc3_p lc3) {
+    word_t r5_data = cpu_get_register(lc3->cpu, R5);
+    if (r5_data == STACK_ERROR) {
+        return;
+    }
+
+    /** Push/ST */
+    if (get_imm_mode(lc3) == STACK_PUSH) { 
+        word_t mdr = cpu_get_mdr(lc3->cpu);
+        word_t mar = cpu_get_mar(lc3->cpu);
+        memory_write(lc3->memory, mar, mdr); /* push complete */
+
+    /** Pop/LD */
+    } else {
+        reg_addr_t dr = get_dr(lc3);
+        word_t mdr = cpu_get_mdr(lc3->cpu);
+        cpu_set_register(lc3->cpu, dr, mdr); /* pop complete */
+    }
+}
+
 /** TRAP execute */
 word_t lc3_execute_trap(lc3_p lc3) {
     /** This is an extra credit opportunity to fully implement trap according to Microstates
@@ -549,59 +610,6 @@ void lc3_trap_x25(lc3_p lc3) {
     cpu_set_register(lc3->cpu, R7, pc);
     if (lc3_is_halted(lc3) == FALSE) {
         lc3_toggle_halted(lc3);
-    }
-}
-
-void lc3_fetch_op_stack(lc3_p lc3) {
-    cpu_set_mar(lc3->cpu, lc3->eval_addr_calculation);
-    if (get_imm_mode(lc3) == TRUE) {                        // push/ST
-        word_t tmpR6 = cpu_get_register(lc3->cpu, );        // Get R6
-        // check for overflow here (if fail, R5 = 0 and break; else R5 = 1)
-        if (tmpR6 <= STACK_MAX) {
-            word_t tmpR5 = cpu_get_register(lc3->cpu, );
-            tmpR5 = 0;
-            cpu_set_register(lc3->cpu, , tmpR5);
-            break;
-        }
-
-        reg_addr_t sr = get_sr1(lc3);
-        word_t sr_data = cpu_get_register(lc3->cpu, sr);
-        cpu_set_mdr(lc3->cpu, sr_data);                     // MDR now contains contents to be pushed
-        cpu_set_mar(lc3->cpu, tmpR6);                       // MAR <- R6
-        tmpR6--;
-        cpu_set_register(lc3->cpu, , tmpR6);                // R6--
-    } else {                                                // pop/LD
-        // check for underflow here (if fail, R5 = 0 and break; else R5 = 1)
-        word_t tmpR6 = cpu_get_register(lc3->cpu, );        // Get R6
-        if (tmpR6 >= STACK_BASE) {
-            word_t tmpR5 = cpu_get_register(lc3->cpu, );
-            tmpR5 = 0;
-            cpu_set_register(lc3->cpu, , tmpR5);
-            break;
-        }
-
-        cpu_set_mar(lc3->cpu, tmpR6);                       // MAR <- R6
-        word_t mar = cpu_get_mar(lc3->cpu);
-        word_t data = memory_get_data(lc3->memory, mar);
-        cpu_set_mdr(lc3->cpu, data);                        // MDR now contains contents to be popped
-        tmpR6++;
-        cpu_set_register(lc3->cpu, , tmpR6);                // R6++
-    }
-}
-
-void lc3_store_stack(lc3_p lc3) {
-    word_t tmpR5 = cpu_get_register(lc3->cpu, );
-    if (tmpR5 == 0) {
-        break;
-    }
-    if (get_imm_mode(lc3) == TRUE) {            // push/ST
-        word_t mdr = cpu_get_mdr(lc3->cpu);
-        word_t mar = cpu_get_mar(lc3->cpu);
-        memory_write(lc3->memory, mar, mdr);    // push complete
-    } else {                                    // pop/LD
-        reg_addr_t dr = get_dr(lc3);
-        word_t mdr = cpu_get_mdr(lc3->cpu);
-        cpu_set_register(lc3->cpu, dr, mdr);    // pop complete
     }
 }
 

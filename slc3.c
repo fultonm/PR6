@@ -253,6 +253,8 @@ void controller(lc3_p lc3, display_p disp) {
             case OPCODE_STR:
                 lc3_fetch_op_str(lc3);
                 break;
+            case OPCODE_STACK:
+                lc3_fetch_op_stack(lc3);
             }
             lc3_set_state(lc3, STATE_EXECUTE);
             break;
@@ -320,6 +322,8 @@ void controller(lc3_p lc3, display_p disp) {
             case OPCODE_LEA:
                 lc3_store_lea(lc3);
                 break;
+            case OPCODE_STACK:
+                lc3_store_stack(lc3);
             }
             is_cycle_complete = TRUE;
             lc3_set_state(lc3, STATE_FETCH);

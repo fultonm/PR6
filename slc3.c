@@ -22,6 +22,9 @@ void prompt_edit_mem(lc3_p);
 /** Returns a non-null pointer to a (hopefully) hex file */
 void prompt_load_file_display(lc3_p);
 
+/** Returns a non-null pointer to a (hopefully) hex file */
+void prompt_save_file_display(lc3_p);
+
 /** Prompt from the terminal for a file if one wasn't specified in the arguments */
 void prompt_load_file_terminal(lc3_p, int, char *[]);
 
@@ -34,8 +37,14 @@ void trap(display_p, lc3_p, word_t);
 /** Opens a file with the given file name */
 FILE *open_file(char *);
 
+/** Saves a file with the given file name */
+FILE *save_file(char *);
+
 /** This function allows for the loading of hex files into memory. */
 void load_file_to_memory(lc3_p lc3, FILE *file);
+
+/** This function allows for the saving of hex files from memory. */
+void save_memory_to_file(lc3_p lc3, FILE *file);
 
 /** Main method for the LC-3 Emulator.
  *
@@ -72,6 +81,9 @@ int main(int argc, char *argv[]) {
             break;
         case DISPLAY_LOAD:
             prompt_load_file_display(lc3);
+            break;
+        case DISPLAY_SAVE:
+            prompt_save_file_display(lc3);
             break;
         case DISPLAY_STEP:
             if (lc3_is_halted(lc3) == FALSE) {
@@ -125,7 +137,7 @@ void prompt_load_file_terminal(lc3_p lc3, int argc, char *argv[]) {
     }
 }
 
-/** Prompts for and loads a hex file */
+/** Prompts for and loads a hex file. */
 void prompt_load_file_display(lc3_p lc3) {
     char user_input[64];
     display_get_file_name(user_input, sizeof(user_input)/sizeof(user_input[0]));
@@ -135,6 +147,17 @@ void prompt_load_file_display(lc3_p lc3) {
         file_ptr = open_file(user_input);
     }
     load_file_to_memory(lc3, open_file(user_input));
+}
+
+/** Prompts for and saves to a hex file. */
+void prompt_save_file_display(lc3_p lc3) {
+    char user_input[64];
+    display_get_file_name(user_input, sizeof(user_input)/sizeof(user_input[0]));
+    FILE* file_ptr = save_file(user_input);
+    while (file_ptr == NULL) {
+        display_get_file_error(user_input, sizeof(user_input)/sizeof(user_input[0]));
+        file_ptr = save_file(user_input);
+    }
 }
 
 /** Allows the display to edit memory */
@@ -358,13 +381,22 @@ void trap(display_p disp, lc3_p lc3, word_t vector) {
     }
 }
 
-/** This function will allow the opening of files */
+/** This function allows for the opening of .hex files. */
 FILE *open_file(char *file_name) {
     /* Attempt to open file. If file isn't found or otherwise null, allow user to
        press enter to return to main program of the menu. */
     FILE *input_file_pointer;
     input_file_pointer = fopen(file_name, "r");
     return input_file_pointer;
+}
+
+/** This functions allows for the saving of .hex files. */
+FILE *save_file(char *file_name) {
+    /* Attempt to save file. If file isn't found or otherwise null, allow user to
+       press enter to return to main program of the menu. */
+    FILE *output_file_pointer;
+    output_file_pointer = fopen(file_name, "rw");
+    return output_file_pointer;
 }
 
 /** This function allows for the loading of hex files into memory. */
@@ -382,6 +414,27 @@ void load_file_to_memory(lc3_p lc3, FILE *file) {
         lc3_set_memory(lc3, lc3_get_starting_address(lc3) + i, data);
         i += 1;
     }
+
+    if (lc3_has_file_loaded(lc3) == FALSE) {
+        lc3_toggle_file_loaded(lc3);
+    }
+}
+
+/** This function allows for the saving of current memory contents into a .hex file. */
+void save_memory_to_filelc3_p lc3, FILE *file) {
+    // char line[8];
+    // fgets(line, sizeof(line), file);
+
+    // /** Set the starting address */
+    // word_t data = strtol(line, NULL, 16);
+    // lc3_set_starting_address(lc3, data);
+
+    // /* Read through file line by line and store to CPU memory. */
+    // int i = 0;
+    // while (fscanf(file, "%hx", &data) != EOF) {
+    //     lc3_set_memory(lc3, lc3_get_starting_address(lc3) + i, data);
+    //     i += 1;
+    // }
 
     if (lc3_has_file_loaded(lc3) == FALSE) {
         lc3_toggle_file_loaded(lc3);

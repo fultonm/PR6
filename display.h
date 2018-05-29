@@ -13,6 +13,7 @@
 
 #define DISPLAY_QUIT 0
 #define DISPLAY_LOAD 1
+#define DISPLAY_SAVE 
 #define DISPLAY_STEP 2
 #define DISPLAY_RUN 3
 #define DISPLAY_EDIT_MEM 4

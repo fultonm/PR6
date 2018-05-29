@@ -11,6 +11,8 @@
 #define REGISTER_SIZE 8
 #define MEMORY_SIZE 512
 #define MEMORY_ADDRESS_MIN 0x3000
+#define STACK_MAX 0x3200
+#define STACK_BASE 0x320A
 
 /** Register address indicies */
 #define R0 0

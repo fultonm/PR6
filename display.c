@@ -666,7 +666,6 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
             save_menu_indicies(disp);
             clear();
             refresh();
-            print_window_titles(disp);
             continue;
         }
 

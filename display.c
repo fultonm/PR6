@@ -662,6 +662,12 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
         case KEY_PPAGE:
             menu_driver(disp->menus[disp->active_window], REQ_SCR_UPAGE);
             continue;
+        case KEY_RESIZE:
+            save_menu_indicies(disp);
+            clear();
+            refresh();
+            print_window_titles(disp);
+            continue;
         }
 
         /* Shows the last inputted character as Ncurses recognizes it */

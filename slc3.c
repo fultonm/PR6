@@ -424,7 +424,13 @@ void load_file_to_memory(lc3_p lc3, FILE *file) {
 void save_memory_to_file(lc3_p lc3, FILE *file) {
     fprintf(file, "File writing test test...\n");
 
-    fwrite(lc3->memory, sizeof(memory_t), 1, file);
+    lc3_snapshot_t snapshot = lc3_get_snapshot(lc3);
+    int i;
+    char string[7];
+    for (i = 0; i < MEMORY_SIZE; i++) {
+        sprintf(string, "x%04X\n", snapshot.memory_snapshot.data[i]);
+        fwrite(string, sizeof(string), 1, file);
+    }
 
     fclose(file);
 }

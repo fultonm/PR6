@@ -20,7 +20,7 @@
 
 #define INDEX_REG 0
 #define INDEX_MEM 1
-#define CPU 2
+#define INDEX_CPU 2
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define CTRLD 4
@@ -85,7 +85,8 @@ typedef struct display_t {
     bool breakpoints[MEMORY_SIZE];
 } display_t, *display_p;
 
-int initialize_display(display_p disp);
+void initialize_display(display_p);
+void initialize_display_data(display_p);
 int free_display(display_p);
 void print_message(const char *, char *);
 void clear_message();
@@ -98,6 +99,7 @@ void print_window_titles();
 display_p display_create() {
     display_p disp = calloc(1, sizeof(display_t));
     initialize_display(disp);
+    initialize_display_data(disp);
     return disp;
 }
 
@@ -112,14 +114,14 @@ int display_destroy(display_p disp) {
     return endwin();
 }
 
+/** Reset the display by reallocation */
+void display_reset(display_p disp) {
+    initialize_display(disp);
+}
+
 /** Initializes the debug monitor with variables needed throughout the execution
  * of the LC-3 simulator. */
-int initialize_display(display_p disp) {
-    /* Initialize breakpoint array */
-    int i;
-    for (i = 0; i < MEMORY_SIZE; i++) {
-        disp->breakpoints[i] = false;
-    }
+void initialize_display(display_p disp) {
 
     /* Initialize ncurses */
     initscr();
@@ -131,14 +133,49 @@ int initialize_display(display_p disp) {
     init_pair(2, COLOR_CYAN, COLOR_BLACK);
     init_pair(3, COLOR_YELLOW, COLOR_BLACK);
 
+    /* Create the window instances to be associated with the menus */
+    disp->menu_windows[INDEX_REG] =
+        newwin(REG_PANEL_HEIGHT, REG_PANEL_WIDTH, HEIGHT_PADDING, 4);
+    disp->menu_windows[INDEX_MEM] =
+        newwin(MEM_PANEL_HEIGHT, MEM_PANEL_WIDTH, HEIGHT_PADDING, CPU_PANEL_WIDTH + 8);
+    disp->menu_windows[INDEX_CPU] =
+        newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + HEIGHT_PADDING, 4);
+    
+    /** Initialize the Input window */
+    disp->input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
+                                MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
+    draw_io_window(disp->input_window, "Input");
+    /** Initialize the output window */
+    disp->output_window = newwin(IO_PANEL_HEIGHT + OUTPUT_CONSOLE_LINES - 1,
+                                 MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
+                                 MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
+    draw_io_window(disp->output_window, "Output");
+}
+
+void initialize_display_data(display_p disp) {
+    /** TODO: This flag is uncessary, but only solution I can think of for not attempting to
+     * save/restore selected menu item before they're populated. */
+    disp->menus_populated = FALSE;
+
+    /* Initialize breakpoint array */
+    int i;
+    for (i = 0; i < MEMORY_SIZE; i++) {
+        disp->breakpoints[i] = false;
+    }
+
+    /** Initialize output console content */
+    for (i = 0; i < OUTPUT_CONSOLE_LINES; i++) {
+        memset(disp->console_content[i], '\0', OUTPUT_CONSOLE_COLS);
+    }
+
     /* Stores the size of each array */
     disp->item_counts[INDEX_REG] = REGISTER_SIZE;
     disp->item_counts[INDEX_MEM] = MEMORY_SIZE;
-    disp->item_counts[CPU] = CPU_ELEMENTS_COUNT;
+    disp->item_counts[INDEX_CPU] = CPU_ELEMENTS_COUNT;
 
     disp->saved_menu_index[INDEX_REG] = 0;
     disp->saved_menu_index[INDEX_MEM] = 0;
-    disp->saved_menu_index[CPU] = 0;
+    disp->saved_menu_index[INDEX_CPU] = 0;
 
     disp->console_line_ptr = 0;
     disp->console_col_ptr = 0;
@@ -147,33 +184,7 @@ int initialize_display(display_p disp) {
         (ITEM **)calloc(disp->item_counts[INDEX_REG] + 1, sizeof(ITEM *));
     disp->menu_list_items[INDEX_MEM] =
         (ITEM **)calloc(disp->item_counts[INDEX_MEM] + 1, sizeof(ITEM *));
-    disp->menu_list_items[CPU] = (ITEM **)calloc(disp->item_counts[CPU] + 1, sizeof(ITEM *));
-
-    /* Create the window instances to be associated with the menus */
-    disp->menu_windows[INDEX_REG] =
-        newwin(REG_PANEL_HEIGHT, REG_PANEL_WIDTH, HEIGHT_PADDING, 4);
-    disp->menu_windows[INDEX_MEM] =
-        newwin(MEM_PANEL_HEIGHT, MEM_PANEL_WIDTH, HEIGHT_PADDING, CPU_PANEL_WIDTH + 8);
-    disp->menu_windows[CPU] =
-        newwin(CPU_PANEL_HEIGHT, CPU_PANEL_WIDTH, REG_PANEL_HEIGHT + HEIGHT_PADDING, 4);
-
-    /** TODO: This flag is uncessary, but only solution I can think of for not attempting to
-     * save/restore selected menu item before they're populated. */
-    disp->menus_populated = FALSE;
-
-    disp->input_window = newwin(IO_PANEL_HEIGHT, MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
-                                MEM_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
-    draw_io_window(disp->input_window, "Input");
-    disp->output_window = newwin(IO_PANEL_HEIGHT + OUTPUT_CONSOLE_LINES - 1,
-                                 MEM_PANEL_WIDTH + REG_PANEL_WIDTH + 4,
-                                 MEM_PANEL_HEIGHT + IO_PANEL_HEIGHT + HEIGHT_PADDING + 3, 4);
-    draw_io_window(disp->output_window, "Output");
-
-    for (i = 0; i < OUTPUT_CONSOLE_LINES; i++) {
-        memset(disp->console_content[i], '\0', OUTPUT_CONSOLE_COLS);
-    }
-
-    return 0;
+    disp->menu_list_items[INDEX_CPU] = (ITEM **)calloc(disp->item_counts[INDEX_CPU] + 1, sizeof(ITEM *));
 }
 
 /** Frees the memory associated with windows within the LC-3 debug monitor and
@@ -332,7 +343,8 @@ void display_edit_mem_get_data(char *input, char *address) {
     print_message(MSG_EDIT_MEM_DATA, address);
     /** Move the cursor, turn on echo mode so the user can see their input
      *  then turn it back on after capturing address */
-    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_EDIT_MEM_DATA) + strlen(address) + 2);
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
+         strlen(MSG_EDIT_MEM_DATA) + strlen(address) + 2);
     echo();
     getstr(input);
     noecho();
@@ -350,10 +362,10 @@ void print_window_titles(display_p disp) {
     mvwaddch(disp->menu_windows[INDEX_MEM], 2, 0, ACS_LTEE);
     mvwhline(disp->menu_windows[INDEX_MEM], 2, 1, ACS_HLINE, 38);
 
-    print_title(disp->menu_windows[CPU], 1, "CPU Registers",
-                (disp->active_window == CPU) ? COLOR_PAIR(2) : COLOR_PAIR(1));
-    mvwaddch(disp->menu_windows[CPU], 2, 0, ACS_LTEE);
-    mvwhline(disp->menu_windows[CPU], 2, 1, ACS_HLINE, 38);
+    print_title(disp->menu_windows[INDEX_CPU], 1, "CPU Registers",
+                (disp->active_window == INDEX_CPU) ? COLOR_PAIR(2) : COLOR_PAIR(1));
+    mvwaddch(disp->menu_windows[INDEX_CPU], 2, 0, ACS_LTEE);
+    mvwhline(disp->menu_windows[INDEX_CPU], 2, 1, ACS_HLINE, 38);
 
     /* Refresh the menus */
     int i;
@@ -464,10 +476,10 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     sprintf(disp->cpu_strings[9].description, "%d", lc3_snapshot.cpu_snapshot.cc_p);
 
     for (i = 0; i < CPU_ELEMENTS_COUNT; i++) {
-        disp->menu_list_items[CPU][i] =
+        disp->menu_list_items[INDEX_CPU][i] =
             new_item(disp->cpu_strings[i].label, disp->cpu_strings[i].description);
     }
-    disp->menu_list_items[CPU][i] = new_item((char *)NULL, (char *)NULL);
+    disp->menu_list_items[INDEX_CPU][i] = new_item((char *)NULL, (char *)NULL);
 
     /* Create menu instances from the lists */
     for (i = 0; i < 3; i++) {
@@ -495,9 +507,9 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
                         MEM_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(disp->menus[INDEX_MEM], MEM_PANEL_HEIGHT - 4, 1);
     /* CPU... */
-    set_menu_sub(disp->menus[CPU], derwin(disp->menu_windows[CPU], CPU_PANEL_HEIGHT - 4,
+    set_menu_sub(disp->menus[INDEX_CPU], derwin(disp->menu_windows[INDEX_CPU], CPU_PANEL_HEIGHT - 4,
                                           CPU_PANEL_WIDTH - 4, 3, 1));
-    set_menu_format(disp->menus[CPU], MEM_PANEL_HEIGHT - 4, 2);
+    set_menu_format(disp->menus[INDEX_CPU], MEM_PANEL_HEIGHT - 4, 2);
 
     /* Set menu mark to the string " * " */
     for (i = 0; i < 3; i++) {
@@ -522,6 +534,7 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     attroff(COLOR_PAIR(2));
 
     restore_menu_indicies(disp);
+    refresh();
 }
 
 /** The main logic loop for the debug monitor. Listens for user keystrokes and
@@ -663,9 +676,10 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
             menu_driver(disp->menus[disp->active_window], REQ_SCR_UPAGE);
             continue;
         case KEY_RESIZE:
-            save_menu_indicies(disp);
-            clear();
-            refresh();
+            move(0, 0);
+            clrtobot();
+            display_reset(disp);
+            display_update(disp, lc3_snapshot);
             continue;
         }
 

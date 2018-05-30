@@ -26,7 +26,7 @@ typedef struct cpu_t *cpu_p;
 /** Allocates and initializes the Display */
 display_p display_create();
 
-/** Reinitializes the display without reallocation */
+/** Reinitializes the display by distruction and reallocation */
 void display_reset(display_p);
 
 /** Updates the display with the specified snapshot. Does not wait for the user to give a

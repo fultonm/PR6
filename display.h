@@ -13,11 +13,11 @@
 
 #define DISPLAY_QUIT 0
 #define DISPLAY_LOAD 1
-#define DISPLAY_SAVE 
-#define DISPLAY_STEP 2
-#define DISPLAY_RUN 3
-#define DISPLAY_EDIT_MEM 4
-#define DISPLAY_NO_ACTION 5
+#define DISPLAY_SAVE 2
+#define DISPLAY_STEP 3
+#define DISPLAY_RUN 4
+#define DISPLAY_EDIT_MEM 5
+#define DISPLAY_NO_ACTION 6
 
 typedef int display_result_t;
 
@@ -48,6 +48,12 @@ void display_get_file_name(char *, int);
 
 /** Reprompt for another file name since the last one was an error or didn't exist */
 void display_get_file_error(char *, int);
+
+/** Prompt for a hex file name to load */
+void display_save_file_name(char *, int);
+
+/** Reprompt for another file name since there was an error writing to file name location */
+void display_save_file_error(char *, int);
 
 /** Let the user know their file input was accepted */
 void display_get_file_success(char *);

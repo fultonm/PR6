@@ -1,4 +1,11 @@
-
+/* LC-3 Emulator
+ *
+ * Date: May 2018
+ *
+ * This a terminal-based program that emulates the low-level functions of the
+ * 16-bit LC-3 machine based a finite state machine (FSM) interpretation of its
+ * operations.
+ */
 
 #ifndef MEMORY_H
 #define MEMORY_H

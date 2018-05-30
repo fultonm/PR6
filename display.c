@@ -44,8 +44,9 @@ static const char MSG_CPU_HALTED[] = "CPU halted :*)";
 static const char MSG_LOAD[] = "1) Enter a program to load >> ";
 static const char MSG_LOADED[] = "1) Loaded %s";
 static const char MSG_FILE_NOT_LOADED[] = "1) File not found. Enter a new filename >> ";
-static const char MSG_SAVE[] = "2) Enter";
+static const char MSG_SAVE[] = "2) Enter save file name >> ";
 static const char MSG_SAVED[] = "2) Saved file %s";
+static const char MSG_FILE_NOT_SAVED[] = "2) Error saving to file. Enter save file name >> ";
 static const char MSG_STEP[] = "3) Stepped";
 static const char MSG_STEP_NO_FILE[] = "3) No file loaded yet!";
 static const char MSG_RUNNING_CODE[] = "4) Running code";
@@ -95,6 +96,7 @@ void clear_line(int line);
 void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
 void print_window_titles();
+void display_save_file_name(char *output_file_name, int size);
 
 /** Allocates and initializes the Display */
 display_p display_create() {
@@ -302,6 +304,17 @@ void display_get_file_name(char *input_file_name, int size) {
     noecho();
 }
 
+/** Prompt for a file name to save to. */
+void display_save_file_name(char *output_file_name, int size) {
+    print_message(MSG_SAVE, NULL);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing file name input. */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_SAVE) + 4);
+    echo();
+    getnstr(output_file_name, size);
+    noecho();
+}
+
 /** Reprompt for a file name since the last one was an error */
 void display_get_file_error(char *input_file_name, int size) {
     print_message(MSG_FILE_NOT_LOADED, NULL);
@@ -311,9 +324,23 @@ void display_get_file_error(char *input_file_name, int size) {
     noecho();
 }
 
+/** Reprompt for a file name since there was an error writing to file name location. */
+void display_save_file_error(char *input_file_name, int size) {
+    print_message(MSG_FILE_NOT_SAVED, NULL);
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_FILE_NOT_SAVED) + 4);
+    echo();
+    getnstr(input_file_name, size);
+    noecho();
+}
+
 /** Let the user know their file input was accepted */
 void display_get_file_success(char *input_file_name) {
     print_message(MSG_LOADED, input_file_name);
+}
+
+/** Let the user know their file was successfully saved. */
+void display_save_file_success(char *input_file_name) {
+    print_message(MSG_SAVED, input_file_name);
 }
 
 /** Prompts for the address of the memory we will edit */
@@ -417,11 +444,6 @@ void restore_menu_indicies(display_p disp) {
  * containing menu data are all rebuilt, the menus are reinstantiated,
  * positioned, and posted to the windows. */
 void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
-    
-    struct winsize sz;
-    ioctl(0, TIOCGWINSZ, &screen_size);
-    printf("Screen width: %i  Screen height: %i\n", sz.ws_col, sz.ws_row);
-
     save_menu_indicies(disp);
     free_display(disp);
 

@@ -11,6 +11,9 @@
 #define LC3_H
 
 #include "global.h"
+#include "alu.h"
+#include "cpu.h"
+#include "memory.h"
 
 /** FSM microstates */
 #define STATE_FETCH 0
@@ -71,7 +74,22 @@
 #define MASK_NEGATIVE_PCOFFSET9 0xFE00  // 1111 1110 0000 0000
 #define MASK_NEGATIVE_PCOFFSET6 0xFFC0  // 1111 1111 1100 0000
 
-typedef struct lc3_t *lc3_p;
+typedef struct lc3_t {
+    cpu_p cpu;
+    alu_p alu;
+    memory_p memory;
+
+    word_t starting_address;
+    bool_t is_halted;
+    bool_t is_file_loaded;
+
+    /** Intra-state variables */
+    state_t state;
+    opcode_t opcode;
+    word_t eval_addr_calculation;
+    bool_t branch_enabled;
+    trap_vector_t trap_vector;
+} lc3_t, *lc3_p;
 
 /** Allocates and initializes a new LC3 module */
 lc3_p lc3_create();

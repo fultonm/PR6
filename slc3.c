@@ -15,6 +15,7 @@
 #include "display.h"
 #include "lc3.h"
 #include "slc3.h"
+#include "memory.h"
 
 /** Allows the display to edit memory */
 void prompt_edit_mem(lc3_p);
@@ -421,7 +422,9 @@ void load_file_to_memory(lc3_p lc3, FILE *file) {
 
 /** This function allows for the saving of current memory contents into a .hex file. */
 void save_memory_to_file(lc3_p lc3, FILE *file) {
-    fprintf(file, "This is testing for fprintf...\n");
-    fputs("This is testing for fputs...\n", file);
+    fprintf(file, "File writing test test...\n");
+
+    fwrite(lc3->memory, sizeof(memory_t), 1, file);
+
     fclose(file);
 }

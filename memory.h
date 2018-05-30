@@ -12,7 +12,9 @@
 
 #include "global.h"
 
-typedef struct memory_t *memory_p;
+typedef struct memory_t {
+    word_t data[MEMORY_SIZE];
+} memory_t, *memory_p;
 
 /** Allocates and initializes a new memory module. */
 memory_p memory_create();

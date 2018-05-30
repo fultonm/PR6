@@ -84,7 +84,6 @@ typedef struct display_t {
     char console_content[OUTPUT_CONSOLE_LINES][OUTPUT_CONSOLE_COLS];
     unsigned char console_line_ptr;
     unsigned char console_col_ptr;
-
     bool breakpoints[MEMORY_SIZE];
 } display_t, *display_p;
 

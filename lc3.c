@@ -14,22 +14,22 @@
 #include "memory.h"
 #include <stdlib.h>
 
-typedef struct lc3_t {
-    cpu_p cpu;
-    alu_p alu;
-    memory_p memory;
+// typedef struct lc3_t {
+//     cpu_p cpu;
+//     alu_p alu;
+//     memory_p memory;
 
-    word_t starting_address;
-    bool_t is_halted;
-    bool_t is_file_loaded;
+//     word_t starting_address;
+//     bool_t is_halted;
+//     bool_t is_file_loaded;
 
-    /** Intra-state variables */
-    state_t state;
-    opcode_t opcode;
-    word_t eval_addr_calculation;
-    bool_t branch_enabled;
-    trap_vector_t trap_vector;
-} lc3_t, *lc3_p;
+//     /** Intra-state variables */
+//     state_t state;
+//     opcode_t opcode;
+//     word_t eval_addr_calculation;
+//     bool_t branch_enabled;
+//     trap_vector_t trap_vector;
+// } lc3_t, *lc3_p;
 
 /** Sets LC3 values to default starting values */
 void initialize_lc3(lc3_p);

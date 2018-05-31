@@ -54,6 +54,7 @@ static const char MSG_RUN_NO_FILE[] = "4) No file loaded yet!";
 static const char MSG_DISPLAY_MEM[] = "5) Enter the hex address to jump to >> ";
 static const char MSG_EDIT_MEM_ADDR[] = "6) Enter the hex address to edit >> ";
 static const char MSG_EDIT_MEM_DATA[] = "6) Enter the hex data to push to %s >> ";
+static const char MSG_EDIT_MEM_SUCCESS[] = "6) Sucessfully edited memory %s";
 static const char MSG_SET_UNSET_BRKPT[] = "8) Enter the hex address to set/unset breakpoint >> ";
 static const char MSG_SET_UNSET_BRKPT_CONFIRM[] = "8) Breakpoint was %s";
 static const char MSG_BRKPT_HIT[] = "4) Breakpoint hit at %s. Step or run to continue >> ";
@@ -365,16 +366,25 @@ void display_edit_mem_get_address(char *input) {
 }
 
 /** Prompts for the data the memory location will be set to. */
-void display_edit_mem_get_data(char *input, char *address) {
+void display_edit_mem_get_data(char *data_input, char *address_input) {
     /** Prompt the user for the data */
-    print_message(MSG_EDIT_MEM_DATA, address);
+    print_message(MSG_EDIT_MEM_DATA, address_input);
     /** Move the cursor, turn on echo mode so the user can see their input
      *  then turn it back on after capturing address */
     move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1,
-         strlen(MSG_EDIT_MEM_DATA) + strlen(address) + 2);
+         strlen(MSG_EDIT_MEM_DATA) + strlen(address_input) + 2);
     echo();
-    getstr(input);
+    getstr(data_input);
     noecho();
+}
+
+void display_edit_mem_success(display_p disp, char *address_input, word_t address) {
+    /** Print the success message */
+    print_message(MSG_EDIT_MEM_SUCCESS, address_input);
+    /** Set the memory menu index to show the user the new data */
+    int index = get_index_from_address(address);
+    set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][index]);
+    wrefresh(disp->menu_windows[INDEX_MEM]);
 }
 
 /** Prints titles on all the windows with a surrounding border. */
@@ -432,7 +442,8 @@ void save_menu_indicies(display_p disp) {
     for (i = 0; i < 3; i++) {
         ITEM *item = (ITEM *)current_item(disp->menus[i]);
         if (item != NULL) {
-            disp->saved_menu_index[i] = item_index(item);
+            int index = item_index(item);
+            disp->saved_menu_index[i] = index;
         } else {
             disp->saved_menu_index[i] = 0;
         }
@@ -445,15 +456,21 @@ void save_menu_indicies(display_p disp) {
 void restore_menu_indicies(display_p disp) {
     int i;
     for (i = 0; i < 3; i++) {
-        set_current_item(disp->menus[i], disp->menu_list_items[i][disp->saved_menu_index[i]]);
+        MENU *menu = (MENU *)(disp->menus[i]);
+        int index = disp->saved_menu_index[i];
+        ITEM *item = (ITEM *)(disp->menu_list_items[i][index]);
+        set_current_item(menu, item);
+        wrefresh(disp->menu_windows[i]);
     }
-    refresh();
 }
 
 /** Updates the Ncurses window each time this function is called. The arrays
  * containing menu data are all rebuilt, the menus are reinstantiated,
  * positioned, and posted to the windows. */
 void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
+    /* Set selected item in memory to be current PC */
+    size_t pc_index = get_index_from_address(lc3_snapshot.cpu_snapshot.pc);
+    set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][pc_index]); 
     save_menu_indicies(disp);
     free_display(disp);
 
@@ -573,16 +590,11 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
 
     restore_menu_indicies(disp);
     refresh();
-}
+} /** display_update end */
 
 /** The main logic loop for the debug monitor. Listens for user keystrokes and
  * performs debugging operations */
 display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot) {
-    /* Set selected item in memory to be current PC */
-    size_t pc_index = get_index_from_address(lc3_snapshot.cpu_snapshot.pc);
-    set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][pc_index]);
-    display_update(disp, lc3_snapshot);
-
     /* Input vars used for 5) Show Mem, 6)Edit Mem, 8) Set/Unset breakpoint */
     char word_input_raw[6];
     word_t word_input;
@@ -591,12 +603,16 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
      * back to the LC-3. We load it with whether the current PC is a breakpoint. */
     display_result_t display_return = DISPLAY_NO_ACTION;
 
+    /** If the LC3 has halted show the nice halted message */
     if (lc3_snapshot.is_halted) {
         print_message(MSG_CPU_HALTED, NULL);
     }
-    int index = get_index_from_address(lc3_snapshot.cpu_snapshot.pc);
-    bool_t brkptq = disp->breakpoints[index];
-    if (brkptq == TRUE) {
+
+    /** If the LC3 has encountered a breakpoint show the breakpoint hit message
+     * Todo: This will occur even if the user is already stepping through code which is unnecessary.
+     */
+    bool_t breakpoint = disp->breakpoints[get_index_from_address(lc3_snapshot.cpu_snapshot.pc)];
+    if (breakpoint == TRUE) {
         /** We can reuse an existing char array to store this string */
         sprintf(word_input_raw, "x%04X", lc3_snapshot.cpu_snapshot.pc);
         print_message(MSG_BRKPT_HIT, word_input_raw);
@@ -605,14 +621,15 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
     int c;
     /* If the user selected 9) to quit this while loop will exit */
     while ((c = wgetch(disp->menu_windows[disp->active_window])) != 57) {
+        
         switch (c) {
         case 9:
             /*　User pressed Tab to change active window */
-            disp->active_window++;
-            disp->active_window = disp->active_window % 3;
+            disp->active_window = (disp->active_window + 1) % 3;
+            save_menu_indicies(disp);
             keypad(disp->menu_windows[disp->active_window], TRUE);
+            restore_menu_indicies(disp);
             print_window_titles(disp);
-            display_update(disp, lc3_snapshot);
             /** Continue the while loop (i.e. wait for another char) */
             continue;
         case 49:
@@ -659,9 +676,8 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
             getstr(word_input_raw);
             noecho();
             word_input = get_word_from_string(word_input_raw);
-            set_current_item(
-                disp->menus[INDEX_MEM],
-                disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
+            set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
+            wrefresh(disp->menu_windows[INDEX_MEM]);
             continue;
         case 54:
             /* User selected 6) to edit a memory location */
@@ -689,14 +705,14 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
                                             ? "set"
                                             : "unset");
                 print_message(MSG_SET_UNSET_BRKPT_CONFIRM, word_input_raw);
-                save_menu_indicies(disp);
                 display_update(disp, lc3_snapshot);
-                restore_menu_indicies(disp);
+                set_current_item(disp->menus[INDEX_MEM], disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
+                wrefresh(disp->menu_windows[INDEX_MEM]);
             }
-            display_update(disp, lc3_snapshot);
-            break;
+            continue;
         case KEY_DOWN:
             menu_driver(disp->menus[disp->active_window], REQ_DOWN_ITEM);
+            //restore_menu_indicies(disp);
             continue;
         case KEY_UP:
             menu_driver(disp->menus[disp->active_window], REQ_UP_ITEM);

@@ -402,11 +402,17 @@ bool_t save_memory_to_file(char *file_name, lc3_snapshot_t lc3_snapshot) {
     if (output_file_pointer == NULL) {
         return FALSE;
     }
+
     int i;
-    //char string[6];
+    bool_t found_trap = FALSE;
     for (i = 0; i < MEMORY_SIZE; i++) {
-        //sprintf(string, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
-        fprintf(output_file_pointer, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
+        if (lc3_snapshot.memory_snapshot.data[i] == TRAP_VECTOR_X25) {
+            found_trap = TRUE;
+        }
+
+        if (found_trap == FALSE) {   
+            fprintf(output_file_pointer, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
+        }
     }
     fclose(output_file_pointer);
     return TRUE;

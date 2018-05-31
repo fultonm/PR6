@@ -7,6 +7,5 @@ obj/
 a.out.dSYM/
 *.valgrindout
 *.bin
-*.lst
 *.obj
 *.sym

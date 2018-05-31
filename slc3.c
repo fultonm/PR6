@@ -404,15 +404,9 @@ bool_t save_memory_to_file(char *file_name, lc3_snapshot_t lc3_snapshot) {
     }
 
     int i;
-    bool_t found_trap = FALSE;
     for (i = 0; i < MEMORY_SIZE; i++) {
-        if (lc3_snapshot.memory_snapshot.data[i] == TRAP_VECTOR_X25) {
-            found_trap = TRUE;
-        }
-
-        if (found_trap == FALSE) {   
             fprintf(output_file_pointer, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
-        }
+
     }
     fclose(output_file_pointer);
     return TRUE;
@@ -425,7 +419,7 @@ void load_file_to_memory(lc3_p lc3, FILE *file) {
 
     /** Set the starting address */
     word_t data = strtol(line, NULL, 16);
-    lc3_set_starting_address(lc3, data);
+    lc3_set_starting_address(lc3, MEMORY_ADDRESS_MIN);
 
     /* Read through file line by line and store to CPU memory. */
     int i = 0;

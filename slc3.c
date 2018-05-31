@@ -145,6 +145,7 @@ void prompt_load_file_display(lc3_p lc3) {
         file_ptr = open_file(user_input);
     }
     load_file_to_memory(lc3, open_file(user_input));
+    display_get_file_success(user_input);
 }
 
 /** Prompts for and saves to a hex file. */
@@ -157,6 +158,7 @@ void prompt_save_file_display(lc3_p lc3) {
         display_save_file_error(user_input, sizeof(user_input) / sizeof(user_input[0]));
         success = save_memory_to_file(user_input, snapshot);
     }
+    display_save_file_success(user_input);
 }
 
 /** Allows the display to edit memory */

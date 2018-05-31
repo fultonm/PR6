@@ -49,14 +49,17 @@ void display_get_file_name(char *, int);
 /** Reprompt for another file name since the last one was an error or didn't exist */
 void display_get_file_error(char *, int);
 
+/** Let the user know their file input was accepted */
+void display_get_file_success(char *);
+
 /** Prompt for a hex file name to load */
 void display_save_file_name(char *, int);
 
 /** Reprompt for another file name since there was an error writing to file name location */
 void display_save_file_error(char *, int);
 
-/** Let the user know their file input was accepted */
-void display_get_file_success(char *);
+/** Let the user know their file has been successfully saved */
+void display_save_file_success(char *);
 
 /** Prompts for the address of the memory we will edit */
 void display_edit_mem_get_address(char *);

@@ -21,7 +21,7 @@
 #include "slc3.h"
 
 /** Allows the display to edit memory */
-void prompt_edit_mem(lc3_p);
+void prompt_edit_mem(lc3_p, display_p);
 
 /** Returns a non-null pointer to a (hopefully) hex file */
 void prompt_load_file_display(lc3_p);
@@ -69,19 +69,21 @@ int main(int argc, char *argv[]) {
      * value into the Display component for displaying. This ensures the display only
      * receieves a copy of all values in the LC3 and makes it impossible for Display to
      * modify the LC3 without calling the appropriate methods. */
-    const lc3_snapshot_t machine_snapshot = lc3_get_snapshot(lc3);
-    display_update(disp, machine_snapshot);
-    display_result_t result = display_loop(disp, machine_snapshot);
+    lc3_snapshot_t lc3_snapshot = lc3_get_snapshot(lc3);
+    display_update(disp, lc3_snapshot);
+    display_result_t result = display_loop(disp, lc3_snapshot);
 
     /* If the user has selected MONITOR_STEP, then lets continue executing the
      * LC-3 */
     while (result != DISPLAY_QUIT) {
         switch (result) {
         case DISPLAY_EDIT_MEM:
-            prompt_edit_mem(lc3);
+            prompt_edit_mem(lc3, disp);
             break;
         case DISPLAY_LOAD:
             prompt_load_file_display(lc3);
+            lc3_snapshot = lc3_get_snapshot(lc3);
+            display_update(disp, lc3_snapshot);
             break;
         case DISPLAY_SAVE:
             prompt_save_file_display(lc3);
@@ -89,6 +91,8 @@ int main(int argc, char *argv[]) {
         case DISPLAY_STEP:
             if (lc3_is_halted(lc3) == FALSE) {
                 controller(lc3, disp);
+                lc3_snapshot = lc3_get_snapshot(lc3);
+                display_update(disp, lc3_snapshot);
             }
             break;
         case DISPLAY_RUN:
@@ -98,12 +102,14 @@ int main(int argc, char *argv[]) {
                 controller(lc3, disp);
                 /** Update the display with new information (but don't wait for a
                  * keystroke) */
-                display_update(disp, lc3_get_snapshot(lc3));
+                lc3_snapshot = lc3_get_snapshot(lc3);
+                display_update(disp, lc3_snapshot);
                 /** Sleep for 5 milliseconds */
                 usleep(5000);
             }
         }
-        result = display_loop(disp, lc3_get_snapshot(lc3));
+        lc3_snapshot = lc3_get_snapshot(lc3);
+        result = display_loop(disp, lc3_snapshot);
     }
 
     /* Memory cleanup. */
@@ -165,7 +171,7 @@ void prompt_save_file_display(lc3_p lc3) {
 }
 
 /** Allows the display to edit memory */
-void prompt_edit_mem(lc3_p lc3) {
+void prompt_edit_mem(lc3_p lc3, display_p disp) {
     char address_input[6];
     display_edit_mem_get_address(address_input);
     word_t address = get_word_from_string(address_input);
@@ -173,6 +179,7 @@ void prompt_edit_mem(lc3_p lc3) {
     display_edit_mem_get_data(data_input, address_input);
     word_t data = get_word_from_string(data_input);
     lc3_set_memory(lc3, address, data);
+    display_edit_mem_success(disp, address_input, address);
 }
 
 /*

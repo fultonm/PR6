@@ -65,7 +65,10 @@ void display_save_file_success(char *);
 void display_edit_mem_get_address(char *);
 
 /** Prompts for the data the memory location will be set to. */
-void display_edit_mem_get_data(char *user_input, char *address);
+void display_edit_mem_get_data(char *data_input, char *address_input);
+
+/** Let the user know they have successfully edited the memory and show them the memory location */
+void display_edit_mem_success(display_p, char *address_input, word_t address);
 
 /** Print a general display message (not console output) */
 void print_message(const char *message, char *arg);

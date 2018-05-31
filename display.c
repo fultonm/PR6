@@ -54,7 +54,6 @@ static const char MSG_RUN_NO_FILE[] = "4) No file loaded yet!";
 static const char MSG_DISPLAY_MEM[] = "5) Enter the hex address to jump to >> ";
 static const char MSG_EDIT_MEM_ADDR[] = "6) Enter the hex address to edit >> ";
 static const char MSG_EDIT_MEM_DATA[] = "6) Enter the hex data to push to %s >> ";
-static const char MSG_EDIT_MEM_NO_FILE[] = "6) No file loaded yet!";
 static const char MSG_SET_UNSET_BRKPT[] = "8) Enter the hex address to set/unset breakpoint >> ";
 static const char MSG_SET_UNSET_BRKPT_CONFIRM[] = "8) Breakpoint was %s";
 static const char MSG_BRKPT_HIT[] = "4) Breakpoint hit at %s. Step or run to continue >> ";
@@ -665,10 +664,6 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
                 disp->menu_list_items[INDEX_MEM][get_index_from_address(word_input)]);
             continue;
         case 54:
-            if (lc3_snapshot.file_loaded == FALSE) {
-                print_message(MSG_EDIT_MEM_NO_FILE, NULL);
-                continue;
-            }
             /* User selected 6) to edit a memory location */
             display_return = DISPLAY_EDIT_MEM;
             break;

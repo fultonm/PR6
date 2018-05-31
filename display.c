@@ -721,11 +721,6 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
             continue;
         }
 
-        /* Shows the last inputted character as Ncurses recognizes it */
-        attron(COLOR_PAIR(1));
-        mvprintw(LINES - 3, 0, "Debug: %d", c, c);
-        attroff(COLOR_PAIR(1));
-
         refresh();
 
         /** Reaching this point means no 'continue;' was hit. Time to pass control back to the

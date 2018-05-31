@@ -44,7 +44,7 @@
 #define TRAP_VECTOR_X20 0x20
 #define TRAP_VECTOR_X21 0x21
 #define TRAP_VECTOR_X22 0x22
-#define TRAP_VECTOR_X25 0x25
+#define TRAP_VECTOR_X25 0xF025
 
 /** Allows the Display to edit memory */
 void slc3_edit_memory_handler(lc3_p, word_t address, word_t data);

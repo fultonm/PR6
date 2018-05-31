@@ -14,6 +14,7 @@
 #include "slc3.h"
 #include <curses.h>
 #include <menu.h>
+#include <sys/ioctl.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,6 +44,9 @@ static const char MSG_CPU_HALTED[] = "CPU halted :*)";
 static const char MSG_LOAD[] = "1) Enter a program to load >> ";
 static const char MSG_LOADED[] = "1) Loaded %s";
 static const char MSG_FILE_NOT_LOADED[] = "1) File not found. Enter a new filename >> ";
+static const char MSG_SAVE[] = "2) Enter save file name >> ";
+static const char MSG_SAVED[] = "2) Saved memory to file %s";
+static const char MSG_FILE_NOT_SAVED[] = "2) Error saving to file. Enter save file name >> ";
 static const char MSG_STEP[] = "3) Stepped";
 static const char MSG_STEP_NO_FILE[] = "3) No file loaded yet!";
 static const char MSG_RUNNING_CODE[] = "4) Running code";
@@ -51,8 +55,7 @@ static const char MSG_DISPLAY_MEM[] = "5) Enter the hex address to jump to >> ";
 static const char MSG_EDIT_MEM_ADDR[] = "6) Enter the hex address to edit >> ";
 static const char MSG_EDIT_MEM_DATA[] = "6) Enter the hex data to push to %s >> ";
 static const char MSG_EDIT_MEM_NO_FILE[] = "6) No file loaded yet!";
-static const char MSG_SET_UNSET_BRKPT[] =
-    "8) Enter the hex address to set/unset breakpoint >> ";
+static const char MSG_SET_UNSET_BRKPT[] = "8) Enter the hex address to set/unset breakpoint >> ";
 static const char MSG_SET_UNSET_BRKPT_CONFIRM[] = "8) Breakpoint was %s";
 static const char MSG_BRKPT_HIT[] = "4) Breakpoint hit at %s. Step or run to continue >> ";
 static const char MSG_SET_UNSET_BRKPT_NO_FILE[] = "8) No file loaded yet!";
@@ -81,7 +84,6 @@ typedef struct display_t {
     char console_content[OUTPUT_CONSOLE_LINES][OUTPUT_CONSOLE_COLS];
     unsigned char console_line_ptr;
     unsigned char console_col_ptr;
-
     bool breakpoints[MEMORY_SIZE];
 } display_t, *display_p;
 
@@ -94,6 +96,7 @@ void clear_line(int line);
 void print_title(WINDOW *, int, char *, chtype);
 void draw_io_window(WINDOW *, char *);
 void print_window_titles();
+void display_save_file_name(char *output_file_name, int size);
 
 /** Allocates and initializes the Display */
 display_p display_create() {
@@ -311,6 +314,17 @@ void display_get_file_name(char *input_file_name, int size) {
     noecho();
 }
 
+/** Prompt for a file name to save to. */
+void display_save_file_name(char *output_file_name, int size) {
+    print_message(MSG_SAVE, NULL);
+    /** Move the cursor, turn on echo mode so the user can see their input
+     *  then turn it back on after capturing file name input. */
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_SAVE) + 4);
+    echo();
+    getnstr(output_file_name, size);
+    noecho();
+}
+
 /** Reprompt for a file name since the last one was an error */
 void display_get_file_error(char *input_file_name, int size) {
     print_message(MSG_FILE_NOT_LOADED, NULL);
@@ -320,9 +334,23 @@ void display_get_file_error(char *input_file_name, int size) {
     noecho();
 }
 
+/** Reprompt for a file name since there was an error writing to file name location. */
+void display_save_file_error(char *input_file_name, int size) {
+    print_message(MSG_FILE_NOT_SAVED, NULL);
+    move(MEM_PANEL_HEIGHT + HEIGHT_PADDING + 1, strlen(MSG_FILE_NOT_SAVED) + 4);
+    echo();
+    getnstr(input_file_name, size);
+    noecho();
+}
+
 /** Let the user know their file input was accepted */
 void display_get_file_success(char *input_file_name) {
     print_message(MSG_LOADED, input_file_name);
+}
+
+/** Let the user know their file was successfully saved. */
+void display_save_file_success(char *input_file_name) {
+    print_message(MSG_SAVED, input_file_name);
 }
 
 /** Prompts for the address of the memory we will edit */
@@ -350,6 +378,7 @@ void display_edit_mem_get_data(char *input, char *address) {
     noecho();
 }
 
+/** Prints titles on all the windows with a surrounding border. */
 void print_window_titles(display_p disp) {
     /** Print a border around the windows and print a title */
     print_title(disp->menu_windows[INDEX_REG], 1, "Registers",
@@ -393,6 +422,9 @@ void draw_io_window(WINDOW *window, char *title) {
     wrefresh(window);
 }
 
+/**
+ * Saves the index of the various curses menu locations.
+ */
 void save_menu_indicies(display_p disp) {
     if (disp->menus_populated == FALSE) {
         return;
@@ -408,6 +440,9 @@ void save_menu_indicies(display_p disp) {
     }
 }
 
+/**
+ * Restores the index of the various curses menu locations.
+ */
 void restore_menu_indicies(display_p disp) {
     int i;
     for (i = 0; i < 3; i++) {
@@ -467,8 +502,10 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     sprintf(disp->cpu_strings[5].description, "x%04X", lc3_snapshot.cpu_snapshot.mdr);
     sprintf(disp->cpu_strings[6].label, "CC N:");
     sprintf(disp->cpu_strings[6].description, "%d", lc3_snapshot.cpu_snapshot.cc_n);
+    
     /* Inserting a blank one so the CC stuff looks better */
     sprintf(disp->cpu_strings[7].label, " ");
+
     sprintf(disp->cpu_strings[7].description, " ");
     sprintf(disp->cpu_strings[8].label, "CC Z:");
     sprintf(disp->cpu_strings[8].description, "%d", lc3_snapshot.cpu_snapshot.cc_z);
@@ -501,11 +538,13 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
                  derwin(disp->menu_windows[INDEX_REG], REG_PANEL_HEIGHT - 4,
                         REG_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(disp->menus[INDEX_REG], REG_PANEL_HEIGHT - 4, 1);
-    /* Memories... */
+
+    /* Memory... */
     set_menu_sub(disp->menus[INDEX_MEM],
                  derwin(disp->menu_windows[INDEX_MEM], MEM_PANEL_HEIGHT - 4,
                         MEM_PANEL_WIDTH - 4, 3, 1));
     set_menu_format(disp->menus[INDEX_MEM], MEM_PANEL_HEIGHT - 4, 1);
+
     /* CPU... */
     set_menu_sub(disp->menus[INDEX_CPU], derwin(disp->menu_windows[INDEX_CPU], CPU_PANEL_HEIGHT - 4,
                                           CPU_PANEL_WIDTH - 4, 3, 1));
@@ -528,7 +567,7 @@ void display_update(display_p disp, const lc3_snapshot_t lc3_snapshot) {
     attron(COLOR_PAIR(2));
     mvprintw(0, 4, "Welcome to the LC-3 Simulator Simulator!");
     mvprintw(MEM_PANEL_HEIGHT + 2, 4,
-             "1) Load, 3) Step, 4) Run, 5) Show Mem, 6) Edit 8) Set Brkpt 9) Exit");
+             "1) Load, 2) Save, 3) Step, 4) Run, 5) Show Mem, 6) Edit 8) Set Brkpt 9) Exit");
     mvprintw(LINES - 2, 0, "Use Tab (\\t) to switch active panels");
     mvprintw(LINES - 1, 0, "Arrow Keys to navigate (9 to Exit)");
     attroff(COLOR_PAIR(2));
@@ -580,6 +619,10 @@ display_result_t display_loop(display_p disp, const lc3_snapshot_t lc3_snapshot)
         case 49:
             /* User selected 1) to load a file */
             display_return = DISPLAY_LOAD;
+            break;
+        case 50:
+            /* User selected 2) to save to a file */
+            display_return = DISPLAY_SAVE;
             break;
         case 51:
             /* User selected 3) to step through code */

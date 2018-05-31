@@ -31,6 +31,7 @@
 #define MAX_HEX_BITS 4
 #define MAX_BIN_BITS 16
 
+/* Condition Code Values */
 #define CONDITION_N 4   // 0000 1000 0000 0000
 #define CONDITION_Z 2   // 0000 0100 0000 0000
 #define CONDITION_P 1   // 0000 0010 0000 0000
@@ -39,6 +40,7 @@
 #define CONDITION_ZP 3  // 0000 0110 0000 0000
 #define CONDITION_NZP 7 // 0000 1110 0000 0000
 
+/* Trap Vector Values */
 #define TRAP_VECTOR_X20 0x20
 #define TRAP_VECTOR_X21 0x21
 #define TRAP_VECTOR_X22 0x22

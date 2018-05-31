@@ -17,6 +17,7 @@
 
 #include "display.h"
 #include "lc3.h"
+#include "memory.h"
 #include "slc3.h"
 
 /** Allows the display to edit memory */
@@ -24,6 +25,9 @@ void prompt_edit_mem(lc3_p);
 
 /** Returns a non-null pointer to a (hopefully) hex file */
 void prompt_load_file_display(lc3_p);
+
+/** Returns a non-null pointer to a (hopefully) hex file */
+void prompt_save_file_display(lc3_p);
 
 /** Prompt from the terminal for a file if one wasn't specified in the arguments */
 void prompt_load_file_terminal(lc3_p, int, char *[]);
@@ -37,8 +41,11 @@ void trap(display_p, lc3_p, word_t);
 /** Opens a file with the given file name */
 FILE *open_file(char *);
 
+/** Saves a file with the given file name */
+bool_t save_memory_to_file(char *, lc3_snapshot_t);
+
 /** This function allows for the loading of hex files into memory. */
-void load_file_to_memory(lc3_p lc3, FILE *file);
+void load_file_to_memory(lc3_p, FILE *);
 
 /** Main method for the LC-3 Emulator.
  *
@@ -75,6 +82,9 @@ int main(int argc, char *argv[]) {
             break;
         case DISPLAY_LOAD:
             prompt_load_file_display(lc3);
+            break;
+        case DISPLAY_SAVE:
+            prompt_save_file_display(lc3);
             break;
         case DISPLAY_STEP:
             if (lc3_is_halted(lc3) == FALSE) {
@@ -128,16 +138,30 @@ void prompt_load_file_terminal(lc3_p lc3, int argc, char *argv[]) {
     }
 }
 
-/** Prompts for and loads a hex file */
+/** Prompts for and loads a hex file. */
 void prompt_load_file_display(lc3_p lc3) {
     char user_input[64];
-    display_get_file_name(user_input, sizeof(user_input)/sizeof(user_input[0]));
-    FILE* file_ptr = open_file(user_input);
+    display_get_file_name(user_input, sizeof(user_input) / sizeof(user_input[0]));
+    FILE *file_ptr = open_file(user_input);
     while (file_ptr == NULL) {
-        display_get_file_error(user_input, sizeof(user_input)/sizeof(user_input[0]));
+        display_get_file_error(user_input, sizeof(user_input) / sizeof(user_input[0]));
         file_ptr = open_file(user_input);
     }
     load_file_to_memory(lc3, open_file(user_input));
+    display_get_file_success(user_input);
+}
+
+/** Prompts for and saves to a hex file. */
+void prompt_save_file_display(lc3_p lc3) {
+    lc3_snapshot_t snapshot = lc3_get_snapshot(lc3);
+    char user_input[64];
+    display_save_file_name(user_input, sizeof(user_input) / sizeof(user_input[0]));
+    bool_t success = save_memory_to_file(user_input, snapshot);
+    while (success == FALSE) {
+        display_save_file_error(user_input, sizeof(user_input) / sizeof(user_input[0]));
+        success = save_memory_to_file(user_input, snapshot);
+    }
+    display_save_file_success(user_input);
 }
 
 /** Allows the display to edit memory */
@@ -334,7 +358,6 @@ void controller(lc3_p lc3, display_p disp) {
  */
 void trap(display_p disp, lc3_p lc3, word_t vector) {
     char c;
-
     switch (vector) {
     case TRAP_VECTOR_X25:
         /** HALT */
@@ -361,13 +384,32 @@ void trap(display_p disp, lc3_p lc3, word_t vector) {
     }
 }
 
-/** This function will allow the opening of files */
+/** This function allows for the opening of .hex files. */
 FILE *open_file(char *file_name) {
     /* Attempt to open file. If file isn't found or otherwise null, allow user to
        press enter to return to main program of the menu. */
     FILE *input_file_pointer;
     input_file_pointer = fopen(file_name, "r");
     return input_file_pointer;
+}
+
+/** This functions allows for the saving of .hex files. */
+bool_t save_memory_to_file(char *file_name, lc3_snapshot_t lc3_snapshot) {
+    /* Attempt to save file. If file isn't found or otherwise null, allow user to
+       press enter to return to main program of the menu. */
+    FILE *output_file_pointer;
+    output_file_pointer = fopen(file_name, "w+");
+    if (output_file_pointer == NULL) {
+        return FALSE;
+    }
+    int i;
+    //char string[6];
+    for (i = 0; i < MEMORY_SIZE; i++) {
+        //sprintf(string, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
+        fprintf(output_file_pointer, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
+    }
+    fclose(output_file_pointer);
+    return TRUE;
 }
 
 /** This function allows for the loading of hex files into memory. */

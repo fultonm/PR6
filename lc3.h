@@ -41,28 +41,39 @@
 #define STATE_STORE 5
 
 /** Instruction opcodes */
-#define OPCODE_ADD 1   /* 0001 */
-#define OPCODE_AND 5   /* 0101 */
-#define OPCODE_NOT 9   /* 1001 */
-#define OPCODE_BR 0    /* 0000 */
-#define OPCODE_JMP 12  /* 1100 */
-#define OPCODE_RET 12  /* 1100 */
-#define OPCODE_JSR 4   /* 0100 */
-#define OPCODE_TRAP 15 /* 1111 */
-#define OPCODE_LD 2    /* 0010 */
-#define OPCODE_LDI 10  /* 1010 */
-#define OPCODE_LDR 6   /* 0110 */
-#define OPCODE_LEA 14  /* 1101 */
-#define OPCODE_ST 3    /* 0011 */
-#define OPCODE_STI 11  /* 1011 */
-#define OPCODE_STR 7   /* 0111 */
+#define OPCODE_ADD 1    /* 0001 */
+#define OPCODE_AND 5    /* 0101 */
+#define OPCODE_NOT 9    /* 1001 */
+#define OPCODE_BR 0     /* 0000 */
+#define OPCODE_JMP 12   /* 1100 */
+#define OPCODE_RET 12   /* 1100 */
+#define OPCODE_JSR 4    /* 0100 */
+#define OPCODE_TRAP 15  /* 1111 */
+#define OPCODE_LD 2     /* 0010 */
+#define OPCODE_LDI 10   /* 1010 */
+#define OPCODE_LDR 6    /* 0110 */
+#define OPCODE_LEA 14   /* 1101 */
+#define OPCODE_ST 3     /* 0011 */
+#define OPCODE_STI 11   /* 1011 */
+#define OPCODE_STR 7    /* 0111 */
+#define OPCODE_STACK 13 /* 1101 */
 
-#define BIT_IMMED5 16       // 0000 0000 0001 0000
-#define BIT_PCOFFSET11 1024 // 0000 0100 0000 0000
-#define BIT_PCOFFSET9 256   // 0000 0001 0000 0000
-#define BIT_PCOFFSET6 32    // 0000 0000 0010 0000
+/** Stack status codes. Used for the LC-3 stack push/pop opcode */
+#define STACK_MAX 0x31F6
+#define STACK_BASE 0x31FF
+#define STACK_LAST 0x31FE
+#define STACK_PUSH 0
+#define STACK_POP 1
+#define STACK_SUCCESS 1
+#define STACK_ERROR 0
 
-// How many times to shift the bits.
+/** Mask used to isolating various bits */
+#define BIT_IMMED5 16       /* 0000 0000 0001 0000 */
+#define BIT_PCOFFSET11 1024 /* 0000 0100 0000 0000 */
+#define BIT_PCOFFSET9 256   /* 0000 0001 0000 0000 */
+#define BIT_PCOFFSET6 32    /* 0000 0000 0010 0000 */
+
+/** How many times to shift the bits to isolated various values in the IR */
 #define BITSHIFT_OPCODE 12
 #define BITSHIFT_DR 9
 #define BITSHIFT_NZP 9
@@ -193,7 +204,7 @@ void lc3_fetch_op_ldr(lc3_p);
 void lc3_store_ldr(lc3_p);
 
 /** LEA */
-void lc3_eval_addr_lea(lc3_p lc3);
+void lc3_eval_addr_lea(lc3_p);
 void lc3_store_lea(lc3_p);
 
 /** NOT */
@@ -204,17 +215,21 @@ void lc3_store_not(lc3_p);
 /** ST */
 void lc3_eval_addr_st(lc3_p);
 void lc3_fetch_op_st(lc3_p);
-void lc3_store_st(lc3_p lc3);
+void lc3_store_st(lc3_p);
 
 /** STI */
 void lc3_eval_addr_sti(lc3_p);
 void lc3_fetch_op_sti(lc3_p);
-void lc3_store_sti(lc3_p lc3);
+void lc3_store_sti(lc3_p);
 
 /** STR */
 void lc3_eval_addr_str(lc3_p);
 void lc3_fetch_op_str(lc3_p);
-void lc3_store_str(lc3_p lc3);
+void lc3_store_str(lc3_p);
+
+/** Stack */
+void lc3_fetch_op_stack(lc3_p);
+void lc3_store_stack(lc3_p);
 
 /** TRAP */
 void lc3_fetch_op_trap(lc3_p);

@@ -505,7 +505,7 @@ void lc3_fetch_op_stack(lc3_p lc3) {
     /** Push/ST */
     if (get_imm_mode(lc3) == STACK_PUSH) {
         /** check for overflow here (if fail, R5 = 0 and break; else R5 = 1) */
-        if (r6_data <= STACK_MAX) {
+        if (r6_data < STACK_MAX) {
             cpu_set_register(lc3->cpu, R5, STACK_ERROR);
             return;
         } else {
@@ -515,14 +515,14 @@ void lc3_fetch_op_stack(lc3_p lc3) {
         reg_addr_t sr = get_sr1(lc3);
         word_t sr_data = cpu_get_register(lc3->cpu, sr);
         cpu_set_mdr(lc3->cpu, sr_data); /* MDR now contains contents to be pushed */
-        cpu_set_mar(lc3->cpu, r6_data); /* MAR <- R6 */
         r6_data--;                      /* Decrement and store the stack pointer */
+        cpu_set_mar(lc3->cpu, r6_data); /* MAR <- R6 */
         cpu_set_register(lc3->cpu, R6, r6_data);
 
     /** Pop/LD */
     } else {
         /** check for underflow here (if fail, R5 = 0 and break; else R5 = 1) */
-        if (r6_data >= STACK_BASE) {
+        if (r6_data > STACK_LAST) {
             cpu_set_register(lc3->cpu, R5, STACK_ERROR);
             return;
         } else {
@@ -663,6 +663,7 @@ void initialize_lc3(lc3_p lc3) {
     lc3->is_halted = FALSE;
     lc3->is_file_loaded = FALSE;
     initialize_intrastate(lc3);
+    cpu_set_register(lc3->cpu, R6, STACK_BASE);
 }
 
 /** Reinitializes the variables used during each phase of instruction processing */

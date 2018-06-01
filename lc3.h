@@ -34,6 +34,7 @@
 /** Stack status codes. Used for the LC-3 stack push/pop opcode */
 #define STACK_MAX 0x31F6
 #define STACK_BASE 0x31FF
+#define STACK_LAST 0x31FE
 #define STACK_PUSH 0
 #define STACK_POP 1
 #define STACK_SUCCESS 1

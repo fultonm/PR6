@@ -1,4 +1,28 @@
-
+/**
+ *  LC-3 Simulator
+ *  Final Project (Project #6)
+ *  TCSS 372 - Computer Architecture
+ *  Spring 2018
+ * 
+ *  ALU Module File
+ * 
+ *  This is a simulator of the LC-3 (Little Computer) machine using an 
+ *  object-oriented approach in C. The simulator includes all standard LC-3 
+ *  functionality based on the finite state machine approach and the corresponding
+ *  opcode tables for the machine, with an additional push-pop stack feature utilized 
+ *  on the previously reserved (1101) opcode.
+ * 
+ *  Group Members:
+ *  Michael Fulton
+ *  Enoch Chan
+ *  Logan Stafford
+ * 
+ *  Base Code Contributors:
+ *  Sam Brendel
+ *  Michael Josten
+ *  Sam Anderson
+ *  Tyler Schupack  
+ */
 
 #include "global.h"
 #include "slc3.h"

@@ -1,10 +1,27 @@
-/* LC-3 Emulator
- *
- * Date: May 2018
- *
- * This a terminal-based program that emulates the low-level functions of the
- * 16-bit LC-3 machine based a finite state machine (FSM) interpretation of its
- * operations.
+/**
+ *  LC-3 Simulator
+ *  Final Project (Project #6)
+ *  TCSS 372 - Computer Architecture
+ *  Spring 2018
+ * 
+ *  LC-3 Module File
+ * 
+ *  This is a simulator of the LC-3 (Little Computer) machine using an 
+ *  object-oriented approach in C. The simulator includes all standard LC-3 
+ *  functionality based on the finite state machine approach and the corresponding
+ *  opcode tables for the machine, with an additional push-pop stack feature utilized 
+ *  on the previously reserved (1101) opcode.
+ * 
+ *  Group Members:
+ *  Michael Fulton
+ *  Enoch Chan
+ *  Logan Stafford
+ * 
+ *  Base Code Contributors:
+ *  Sam Brendel
+ *  Michael Josten
+ *  Sam Anderson
+ *  Tyler Schupack  
  */
 
 #include "lc3.h"
@@ -13,23 +30,6 @@
 #include "global.h"
 #include "memory.h"
 #include <stdlib.h>
-
-// typedef struct lc3_t {
-//     cpu_p cpu;
-//     alu_p alu;
-//     memory_p memory;
-
-//     word_t starting_address;
-//     bool_t is_halted;
-//     bool_t is_file_loaded;
-
-//     /** Intra-state variables */
-//     state_t state;
-//     opcode_t opcode;
-//     word_t eval_addr_calculation;
-//     bool_t branch_enabled;
-//     trap_vector_t trap_vector;
-// } lc3_t, *lc3_p;
 
 /** Sets LC3 values to default starting values */
 void initialize_lc3(lc3_p);

@@ -409,6 +409,7 @@ bool_t save_memory_to_file(char *file_name, lc3_snapshot_t lc3_snapshot) {
     if (output_file_pointer == NULL) {
         return FALSE;
     }
+    fprintf(output_file_pointer, "%04X\n", lc3_snapshot.starting_address);
     int i;
     //char string[6];
     for (i = 0; i < MEMORY_SIZE; i++) {

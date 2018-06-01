@@ -32,10 +32,10 @@
 #define OPCODE_STACK 13 /* 1101 */
 
 /** Stack status codes. Used for the LC-3 stack push/pop opcode */
-#define STACK_MAX 0x3200
-#define STACK_BASE 0x320A
-#define STACK_PUSH 1
-#define STACK_POP 0
+#define STACK_MAX 0x31F6
+#define STACK_BASE 0x31FF
+#define STACK_PUSH 0
+#define STACK_POP 1
 #define STACK_SUCCESS 1
 #define STACK_ERROR 0
 

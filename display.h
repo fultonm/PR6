@@ -1,11 +1,21 @@
-
-/* LC-3 Emulator
- *
- * Date: May 2018
- *
- * This a terminal-based program that emulates the low-level functions of the 16-bit LC-3
- * machine based a finite state machine (FSM) interpretation of its operations.
+/**
+ *  LC-3 Simulator
+ *  Final Project (Project #6)
+ *  TCSS 372 - Computer Architecture
+ *  Spring 2018
+ * 
+ *  Group Members:
+ *  Michael Fulton
+ *  Enoch Chan
+ *  Logan Stafford
+ * 
+ *  Base Code Contributors:
+ *  Sam Brendel
+ *  Michael Josten
+ *  Sam Anderson
+ *  Tyler Schupack  
  */
+
 #ifndef DISPLAY_MONITOR_H_
 #define DISPLAY_MONITOR_H_
 

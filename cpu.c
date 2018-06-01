@@ -1,3 +1,20 @@
+/**
+ *  LC-3 Simulator
+ *  Final Project (Project #6)
+ *  TCSS 372 - Computer Architecture
+ *  Spring 2018
+ * 
+ *  Group Members:
+ *  Michael Fulton
+ *  Enoch Chan
+ *  Logan Stafford
+ * 
+ *  Base Code Contributors:
+ *  Sam Brendel
+ *  Michael Josten
+ *  Sam Anderson
+ *  Tyler Schupack  
+ */
 
 #include "cpu.h"
 #include "global.h"

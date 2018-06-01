@@ -179,6 +179,8 @@ void prompt_edit_mem(lc3_p lc3, display_p disp) {
     display_edit_mem_get_data(data_input, address_input);
     word_t data = get_word_from_string(data_input);
     lc3_set_memory(lc3, address, data);
+    lc3_snapshot_t snapshot = lc3_get_snapshot(lc3);
+    display_update(disp, snapshot);
     display_edit_mem_success(disp, address_input, address);
 }
 

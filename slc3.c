@@ -42,7 +42,7 @@ void trap(display_p, lc3_p, word_t);
 FILE *open_file(char *);
 
 /** Saves a file with the given file name */
-bool_t save_memory_to_file(char *, lc3_snapshot_t);
+bool_t save_memory_to_file(lc3_p, char *, lc3_snapshot_t);
 
 /** This function allows for the loading of hex files into memory. */
 void load_file_to_memory(lc3_p, FILE *);
@@ -156,10 +156,10 @@ void prompt_save_file_display(lc3_p lc3) {
     lc3_snapshot_t snapshot = lc3_get_snapshot(lc3);
     char user_input[64];
     display_save_file_name(user_input, sizeof(user_input) / sizeof(user_input[0]));
-    bool_t success = save_memory_to_file(user_input, snapshot);
+    bool_t success = save_memory_to_file(lc3, user_input, snapshot);
     while (success == FALSE) {
         display_save_file_error(user_input, sizeof(user_input) / sizeof(user_input[0]));
-        success = save_memory_to_file(user_input, snapshot);
+        success = save_memory_to_file(lc3, user_input, snapshot);
     }
     display_save_file_success(user_input);
 }
@@ -394,21 +394,25 @@ FILE *open_file(char *file_name) {
 }
 
 /** This functions allows for the saving of .hex files. */
-bool_t save_memory_to_file(char *file_name, lc3_snapshot_t lc3_snapshot) {
+bool_t save_memory_to_file(lc3_p lc3, char *file_name, lc3_snapshot_t lc3_snapshot) {
     /* Attempt to save file. If file isn't found or otherwise null, allow user to
        press enter to return to main program of the menu. */
-    FILE *output_file_pointer;
-    output_file_pointer = fopen(file_name, "w+");
-    if (output_file_pointer == NULL) {
-        return FALSE;
-    }
+    if (lc3_has_file_loaded(lc3) == FALSE) {
+        display_save_file_nofileloaded();
+    } else {
+        FILE *output_file_pointer;
+        output_file_pointer = fopen(file_name, "w+");
+        if (output_file_pointer == NULL) {
+            return FALSE;
+        }
 
-    int i;
-    for (i = 0; i < MEMORY_SIZE; i++) {
+        int i;
+        for (i = -1; i < MEMORY_SIZE; i++) {
             fprintf(output_file_pointer, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
 
+        }
+        fclose(output_file_pointer);
     }
-    fclose(output_file_pointer);
     return TRUE;
 }
 

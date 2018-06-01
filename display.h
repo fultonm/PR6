@@ -61,6 +61,9 @@ void display_save_file_error(char *, int);
 /** Let the user know their file has been successfully saved */
 void display_save_file_success(char *);
 
+/** Let the user know there is no file currently loaded. */
+void display_save_file_nofileloaded();
+
 /** Prompts for the address of the memory we will edit */
 void display_edit_mem_get_address(char *);
 

@@ -47,6 +47,7 @@ static const char MSG_FILE_NOT_LOADED[] = "1) File not found. Enter a new filena
 static const char MSG_SAVE[] = "2) Enter save file name >> ";
 static const char MSG_SAVED[] = "2) Saved memory to file %s";
 static const char MSG_FILE_NOT_SAVED[] = "2) Error saving to file. Enter save file name >> ";
+static const char MSG_SAVE_NO_FILE[] = "2) No file loaded yet!";
 static const char MSG_STEP[] = "3) Stepped";
 static const char MSG_STEP_NO_FILE[] = "3) No file loaded yet!";
 static const char MSG_RUNNING_CODE[] = "4) Running code";
@@ -351,6 +352,11 @@ void display_get_file_success(char *input_file_name) {
 /** Let the user know their file was successfully saved. */
 void display_save_file_success(char *input_file_name) {
     print_message(MSG_SAVED, input_file_name);
+}
+
+/** Let the user know there is no file currently loaded. */
+void display_save_file_nofileloaded() {
+    print_message(MSG_SAVE_NO_FILE, NULL);
 }
 
 /** Prompts for the address of the memory we will edit */

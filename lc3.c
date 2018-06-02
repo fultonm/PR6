@@ -663,7 +663,6 @@ void initialize_lc3(lc3_p lc3) {
     lc3->is_halted = FALSE;
     lc3->is_file_loaded = FALSE;
     initialize_intrastate(lc3);
-    cpu_set_register(lc3->cpu, R6, STACK_BASE);
 }
 
 /** Reinitializes the variables used during each phase of instruction processing */

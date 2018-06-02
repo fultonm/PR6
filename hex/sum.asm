@@ -5,6 +5,7 @@
 
 				.ORIG x3000
 
+				LD R6, STACK_BASE			; Initialize stack pointer
 				AND R4, R4, #0				; Clear sum
 				LEA R0, ARGS_PROMPT			; Load arguments prompt
 				PUTS						; Print the string
@@ -74,5 +75,6 @@ ENTER_PROMPT	.STRINGZ "\nEnter a number(0-9): "
 RESULT_PROMPT	.STRINGZ "\nSum: "
 ARGS_STORE		.BLKW 1									; Store number of arguments
 RESULT			.BLKW 1									; The sum result
+STACK_BASE		.FILL				x31FF
 
 				.END

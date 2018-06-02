@@ -3,25 +3,25 @@
  *  Final Project (Project #6)
  *  TCSS 372 - Computer Architecture
  *  Spring 2018
- * 
+ *
  *  LC-3 Simulator Module File
- * 
- *  This is a simulator of the LC-3 (Little Computer) machine using an 
- *  object-oriented approach in C. The simulator includes all standard LC-3 
+ *
+ *  This is a simulator of the LC-3 (Little Computer) machine using an
+ *  object-oriented approach in C. The simulator includes all standard LC-3
  *  functionality based on the finite state machine approach and the corresponding
- *  opcode tables for the machine, with an additional push-pop stack feature utilized 
+ *  opcode tables for the machine, with an additional push-pop stack feature utilized
  *  on the previously reserved (1101) opcode.
- * 
+ *
  *  Group Members:
  *  Michael Fulton
  *  Enoch Chan
  *  Logan Stafford
- * 
+ *
  *  Base Code Contributors:
  *  Sam Brendel
  *  Michael Josten
  *  Sam Anderson
- *  Tyler Schupack  
+ *  Tyler Schupack
  */
 
 #include <signal.h>
@@ -110,8 +110,7 @@ int main(int argc, char *argv[]) {
             }
             break;
         case DISPLAY_RUN:
-            while (lc3_is_halted(lc3) == FALSE &&
-                   display_has_breakpoint(disp, lc3_get_pc(lc3)) == FALSE) {
+            do {
                 /** Run through the controller for this instruction */
                 controller(lc3, disp);
                 /** Update the display with new information (but don't wait for a
@@ -120,7 +119,8 @@ int main(int argc, char *argv[]) {
                 display_update(disp, lc3_snapshot);
                 /** Sleep for 5 milliseconds */
                 usleep(5000);
-            }
+            } while (lc3_is_halted(lc3) == FALSE &&
+                     display_has_breakpoint(disp, lc3_get_pc(lc3)) == FALSE);
         }
         lc3_snapshot = lc3_get_snapshot(lc3);
         result = display_loop(disp, lc3_snapshot);
@@ -431,9 +431,9 @@ bool_t save_memory_to_file(char *file_name, lc3_snapshot_t lc3_snapshot) {
     }
     fprintf(output_file_pointer, "%04X\n", lc3_snapshot.starting_address);
     int i;
-    //char string[6];
+    // char string[6];
     for (i = 0; i < MEMORY_SIZE; i++) {
-        //sprintf(string, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
+        // sprintf(string, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
         fprintf(output_file_pointer, "%04X\n", lc3_snapshot.memory_snapshot.data[i]);
     }
     fclose(output_file_pointer);

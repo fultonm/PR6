@@ -512,7 +512,7 @@ void lc3_fetch_op_stack(lc3_p lc3) {
             cpu_set_register(lc3->cpu, R5, STACK_SUCCESS);
         }
 
-        reg_addr_t sr = get_sr1(lc3);
+        reg_addr_t sr = get_dr(lc3);
         word_t sr_data = cpu_get_register(lc3->cpu, sr);
         cpu_set_mdr(lc3->cpu, sr_data); /* MDR now contains contents to be pushed */
         r6_data--;                      /* Decrement and store the stack pointer */

@@ -10,38 +10,49 @@
 				JSR GET_ARGS				; Jump to subroutine
 				JSR COUNT					; Jump to subroutine
 				JSR SUM						; Jump to subroutine
-				LEA R1, RESULT
-				STR R0, R1, #0
+				LEA R1, RESULT				; Result address loaded
+				STR R0, R1, #0				; Store sum into result address
 				LEA R0, RESULT_PROMPT		; Load result prompt
 				PUTS						; Print the string
-				LDR R0, R1, #0
+				LDR R0, R1, #0				; Move result into R0 to be printed
+				ADD R0, R0, #-16
+				ADD R0, R0, #-16
+				ADD R0, R0, #-16
+				ADD R0, R0, #-16
 				OUT							; Output the sum
+				HALT						;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-GET_ARGS		GETC						; Listen for character
+GET_ARGS		ADD R0, R0, R0; PUSH R7
+				GETC						; Listen for character
+				ADD R0, R0, R0; POP R7
 
 				ADD R0, R0, R0; PUSH R7						; Push return address for GET_ARGS subroutine
 				ADD R0, R0, R0; PUSH R0						; Push argument
 				JSR CONVERT					; Jump to subroutine, R7 <- return address for CONVERT
 				ADD R0, R0, R0; POP R7						; Get back return address for GET_ARGS subroutine
 
-				LEA R1, ARGS_STORE			; Load address for number of arguments
+				LEA R1, ARGS_STORE			; (13)Load address for number of arguments
 				STR R0, R1, #0				; Store number of arguments
 				LD R2, ARGS_STORE			; Load R2 with number of arguments
 				RET
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 COUNT			LEA R0, ENTER_PROMPT		; Load enter prompt
+				ADD R0, R0, R0; PUSH R7
 				PUTS						; Print the string
+				ADD R0, R0, R0; POP R7
+				ADD R0, R0, R0; PUSH R7
 				GETC						; Listen for character
+				ADD R0, R0, R0; POP R7
 
 				ADD R0, R0, R0; PUSH R7						; Push return address for COUNT subroutine
-				ADD R0, R0, R0; PUSH R0						; Push argument
+				ADD R0, R0, R0; PUSH R0						; (1F) Push argument
 				JSR CONVERT					; Jump to subroutine, R7 <- return address for CONVERT
 				ADD R0, R0, R0; POP R7						; Get back return address for COUNT subroutine
 
 				ADD R0, R0, R0; PUSH R0						; Push argument onto stack
 				ADD R2, R2, #-1				; Decrement argument counter
-				BRp COUNT					; Push arguments until done
-				LEA R2, ARGS_STORE			; Reload the number of arguments
+				BRp COUNT					; (24) Push arguments until done
+				LD R2, ARGS_STORE			; Reload the number of arguments
 				RET							;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SUM				ADD R0, R0, R0; POP R3						; Pop first argument off into R3
@@ -52,8 +63,8 @@ SUM				ADD R0, R0, R0; POP R3						; Pop first argument off into R3
 				RET							;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CONVERT			ADD R0, R0, R0; POP R0						; Pop off argument
-				LD R1, NEG_ASCII_NUM		; Load negative ascii number (-48)
-				ADD R0, R0, R1				; Subtract ascii number 0
+				LD R3, NEG_ASCII_NUM		; Load negative ascii number (-48)
+				ADD R0, R0, R3				; Subtract ascii number 0
 				RET							;
 
 NEG_ASCII_NUM   .FILL               #-48				; A negative 48.

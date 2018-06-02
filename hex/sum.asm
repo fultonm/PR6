@@ -1,6 +1,7 @@
 ; Enoch Chan
 ; TCSS 372
 ; Simple LC3 program that takes a number of arguments and prints their sum.
+; Note: if the resulting sum is greater than 9, the output will not display properly.
 
 				.ORIG x3000
 
@@ -15,10 +16,10 @@
 				LEA R0, RESULT_PROMPT		; Load result prompt
 				PUTS						; Print the string
 				LDR R0, R1, #0				; Move result into R0 to be printed
-				ADD R0, R0, #-16
-				ADD R0, R0, #-16
-				ADD R0, R0, #-16
-				ADD R0, R0, #-16
+				ADD R0, R0, #12
+				ADD R0, R0, #12
+				ADD R0, R0, #12
+				ADD R0, R0, #12
 				OUT							; Output the sum
 				HALT						;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
